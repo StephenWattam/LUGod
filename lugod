@@ -55,7 +55,7 @@ $log.debug "Installing signal handlers."
 
 # Ensure our namespace covers the hooks dir
 Dir.glob(File.join(File.dirname(__FILE__), config[:hooks][:dir], "*.rb")).each{|x| 
-  require x
+  load x
 }
 
 

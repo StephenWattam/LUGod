@@ -298,7 +298,7 @@ private
           p.call(nick, message, raw_msg)
         end
       rescue Exception => e
-        say("Error in callback '#{name}' => #{e}")
+        say("Error in #{name}: #{e}")
         $log.error "Error in callback '#{name}' => #{e}"
         $log.debug "Backtrace: #{e.backtrace.join("\n")}"
       end
@@ -313,8 +313,16 @@ private
 
     # Parse message
     message   =~ COMMAND_RX          
-    cmd       = $1.downcase
-    args      = Shellwords.shellsplit($2)
+    cmd       = $1  
+
+    # Try to split args by "quote rules", 
+    # but fall back to regular if people
+    # have unmatched quotes
+    args    = $2.split
+    begin
+      args    = Shellwords.shellsplit($2)
+    rescue ArgumentError => ae
+    end
 
     $log.debug "IRC Received command: #{cmd}, args: #{args.to_s}"
 
@@ -329,7 +337,7 @@ private
           $log.debug "Dispatching command hook #{name} for #{cmd}..."
           p.call(*args)
         rescue Exception => e
-          say("Error in callback '#{name}' for '#{cmd}': #{e}")
+          say("Error in #{name}: #{e}")
           $log.error "Error in callback for command: #{cmd} => #{e}"
           $log.debug "Backtrace: #{e.backtrace.join("\n")}"
         end

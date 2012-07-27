@@ -16,12 +16,12 @@ class PersistentHash < Hash
 
   # save to a file other than the filename
   def save_as(path, overwrite=true)
-    _save(overwrite, path)
+    write_file(overwrite, path)
   end
 
   # save to the internal filename deely.
   def save(overwrite=true)
-    _save(overwrite, @filename)
+    write_file(overwrite, @filename)
   end
 
   # internal save method

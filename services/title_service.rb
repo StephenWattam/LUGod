@@ -24,7 +24,8 @@ class TitleService < HookService
   # Number of redirects to follow
   MAX_REDIRECTS = 5
 
-  TITLE_TEMPLATE = "Title %i: %s"
+  TITLE_TEMPLATE = "Title: %s"
+  TITLE_MULTIPLE_TEMPLATE = "Title %i/%i: %s"
 
 
   def check_link( nick, message, raw )
@@ -47,10 +48,15 @@ class TitleService < HookService
       end
     }
 
-    c = 0
-    titles.each{|t|
-      @bot.say(TITLE_TEMPLATE % [c+=1, t]) 
-    }
+    # Output counts if there are multiple links
+    if(titles.length > 1)
+      c = 0
+      titles.each{|t|
+        @bot.say(TITLE_MULTIPLE_TEMPLATE% [c+=1, titles.length, t]) 
+      }
+    else
+      @bot.say(TITLE_TEMPLATE % titles[0])
+    end
   end
 
   def hook_thyself
@@ -102,6 +108,8 @@ private
       title = $1
       $log.debug "Looked up title: '#{title}'"
       title.gsub!("\n\r", "")
+      title.gsub!(/\s+/, " ")
+      title.strip!
       title = URI.unescape(title)
     }
 
