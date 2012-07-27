@@ -24,11 +24,11 @@ class TitleService < HookService
   # Number of redirects to follow
   MAX_REDIRECTS = 5
 
-  TITLE_TEMPLATE = "Title: %s"
+  TITLE_TEMPLATE = "Title %i: %s"
 
 
   def check_link( nick, message, raw )
-    uris = URI.extract(message, ["http", "https"])
+    uris = URI.extract(message, ["http", "https"]).uniq
     #uris = (message.scan(URL_RX))
     $log.debug "Found #{uris.length} URLs in message."
 
@@ -47,8 +47,9 @@ class TitleService < HookService
       end
     }
 
+    c = 0
     titles.each{|t|
-      @bot.say(TITLE_TEMPLATE % t) 
+      @bot.say(TITLE_TEMPLATE % [c+=1, t]) 
     }
   end
 
