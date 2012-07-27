@@ -1,0 +1,27 @@
+---
+:bot_connection_poll_rate: 120          # Check every n seconds that the bot is still conected
+:irc:
+  :connect_timeout: 10                  # How long to check we're connected if verify is true
+  :nick: ^LUGod                         # The nickname to use
+  :user: LUGod                          # The username for IRC
+  :name: LU Master of All               # The full name of the user
+  :server: irc.freenode.net             # The server
+  :channel: ! '#lucs'                   # El channel
+  :port: 6667                           # Port
+  :verbose: false 
+:hooks:
+  :dir: services/                       # Where service objects are located
+  :objs:                                # A list of service object names (instantiated with eval)
+    - Echo
+:logging:                               # Logging config
+  :progname: LUGod                      # The name of the app in the logs
+  :logs:                                # A list of places to log to
+    :default:                            
+      :dev: STDOUT                                                # STDOUT, STDERR or a filename are supported
+      :level: :debug                                                 # level to debug at
+    #:errors:
+      #:dev: 'logs/client.err'
+      #:level: :warn                                              
+    :file_log:
+      :dev: 'logs/lugod.log'
+      :level: :info

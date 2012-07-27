@@ -1,0 +1,108 @@
+#!/usr/bin/env ruby
+
+# Requirements for actual running
+require 'yaml'
+require 'timeout'
+require './lib/persistent_hash.rb'
+require './lib/multilog.rb'
+require './lib/hook_bot.rb'
+require './lib/hook_service.rb'
+
+# =====================
+# Constants, that is, true ones, not fron the config filke
+#
+# Don't reconnect faster than this
+# This overrides the value of config[:bot_connection_poll_rate]
+# to ensure we don't mash servers
+MIN_RECONNECT_RATE = 60
+
+# The time to give the bot to quit IRC
+# when handed a signal
+BOT_DC_TIMEOUT = 5
+
+# =====================
+# Load into a persisten object so we can save later
+config_file  = ARGV[0] || "config/config.yml"
+config       = PersistentHash.new(config_file, true)
+
+
+# =====================
+# Then, create global log
+logdevs = []
+config[:logging][:logs].each{|name, ldopts| 
+  # Construct the log
+  ld            = {:name => name}
+  ld[:dev]      = %w{STDOUT STDERR}.include?(ldopts[:dev]) ? eval(ldopts[:dev]) : ldopts[:dev] || STDOUT
+  ld[:level]    = ldopts[:level]
+
+  # Add to the list of logs
+  logdevs << ld
+}
+$log = MultiOutputLogger.new(logdevs, config[:logging][:progname])
+$log.summarise_logging
+
+# =====================
+# Handle signals nicely.
+$log.debug "Installing signal handlers."
+%w{INT HUP KILL ABRT}.each{|s|
+  trap(s) { raise SignalException.new(s) }
+}
+
+
+
+# ----------------------------------------
+# Constuct hooks
+
+# Ensure our namespace covers the hooks dir
+Dir.glob(File.join(File.dirname(__FILE__), config[:hooks][:dir], "*.rb")).each{|x| 
+  require x
+}
+
+
+
+# ----------------------------------------
+# Instantiate the bot
+bot = HookBot.new(config[:irc])
+config[:hooks][:objs].each{|h|
+  
+  # Create the hook object with a reference to the bot
+  hook = eval("#{h}.new(bot)")
+  hook.hook_thyself
+
+  # Check it makes sense to use callbacks on it
+  raise "Hook #{h} is not a subclass of HookService!" if not hook.is_a? HookService
+}
+
+
+# -----------------------------------------------------------------------------------
+# Start execution proper
+begin
+
+  # Continually connect and run
+  loop{
+    $log.info "Connecting bot!"
+    bot.run(true, true)
+    $log.info "Bot connected --- dropping back to check connection"
+
+    while(bot.connected?)
+      sleep([config[:bot_connection_poll_rate], MIN_RECONNECT_RATE].max)
+    end
+    $log.error "Disconnected!"
+  }
+
+# Handle signals nicely.
+rescue SignalException => Se
+  $log.fatal "Caught signal!"
+  if defined? bot and bot.connected? then
+    $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s)"
+    begin
+      Timeout::timeout(BOT_DC_TIMEOUT){
+        bot.disconnect
+      }
+    rescue Timeout::Error => TMe
+    end
+    $log.fatal "Done."
+  end
+end
+
+
