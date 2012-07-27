@@ -6,13 +6,14 @@
   :user: LUGod                          # The username for IRC
   :name: LU Master of All               # The full name of the user
   :server: irc.freenode.net             # The server
-  :channel: ! '#lucs'                   # El channel
+  :channel: ! '#lucs-dev'                   # El channel
   :port: 6667                           # Port
   :verbose: false 
 :hooks:
   :dir: services/                       # Where service objects are located
   :objs:                                # A list of service object names (instantiated with eval)
-    - Echo
+    #- Echo
+    - TitleService
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
   :logs:                                # A list of places to log to
