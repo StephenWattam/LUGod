@@ -1,5 +1,8 @@
 #!/usr/bin/env ruby
 
+require 'rubygems'
+require 'bundler/setup'
+
 # Requirements for actual running
 require 'yaml'
 require 'timeout'
