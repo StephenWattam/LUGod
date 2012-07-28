@@ -88,9 +88,6 @@ class HookBot
         #c.verbose     = false 
       }
 
-      # TODO: handle 
-
-
       # NAMES Reply
       on :"353" do 
         begin
@@ -114,17 +111,17 @@ class HookBot
         end
       end
 
-			# 433 to handle nick in use
-			on :error do
-				begin
-				if raw_msg.params[2] == "Nickname is already in use."
-					handler.changenick
-				end
+      # 433 to handle nick in use
+      on :error do
+        begin
+        if raw_msg.params[2] == "Nickname is already in use."
+          handler.changenick
+        end
         rescue Exception => e
           $log.warn e.to_s
           $log.debug e.backtrace.join("\n")
-				end
-			end
+        end
+      end
 
       # Someone parted
       on :part do
@@ -263,13 +260,13 @@ class HookBot
     @bot.msg(nick, msg)
   end
 
-	# Change bot's nick by adding a "_"
-	def changenick
-		@bot.config[:nick] += "_"
-		#@bot.raw("NICK #{@bot.config[:nick]}")
-		#@bot.raw("USER #{@bot.config[:nick]} 0 * :#{@bot.config[:realname]}")
-		@bot.start
-	end
+  # Change bot's nick by adding a "_"
+  def changenick
+    @bot.config[:nick] += "_"
+    #@bot.raw("NICK #{@bot.config[:nick]}")
+    #@bot.raw("USER #{@bot.config[:nick]} 0 * :#{@bot.config[:realname]}")
+    @bot.start
+  end
 
   # Action something.
   def action(msg, nick = @config[:channel])
@@ -278,6 +275,7 @@ class HookBot
 
   # Close the bot's connection to the server
   def disconnect
+    # TODO: there may be a 'halt' in isaac
     $log.error "STUB: I don't know how to disconnect yet!"
   end
 
