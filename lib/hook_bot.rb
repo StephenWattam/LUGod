@@ -90,6 +90,7 @@ class HookBot
 
       # TODO: handle 
 
+
       # NAMES Reply
       on :"353" do 
         begin
@@ -112,6 +113,18 @@ class HookBot
           $log.debug e.backtrace.join("\n")
         end
       end
+
+			# 433 to handle nick in use
+			on :error do
+				begin
+				if raw_msg.params[2] == "Nickname is already in use."
+					handler.changenick
+				end
+        rescue Exception => e
+          $log.warn e.to_s
+          $log.debug e.backtrace.join("\n")
+				end
+			end
 
       # Someone parted
       on :part do
@@ -249,6 +262,14 @@ class HookBot
   def say(msg, nick = @config[:channel])
     @bot.msg(nick, msg)
   end
+
+	# Change bot's nick by adding a "_"
+	def changenick
+		@bot.config[:nick] += "_"
+		#@bot.raw("NICK #{@bot.config[:nick]}")
+		#@bot.raw("USER #{@bot.config[:nick]} 0 * :#{@bot.config[:realname]}")
+		@bot.start
+	end
 
   # Action something.
   def action(msg, nick = @config[:channel])
