@@ -1,7 +1,10 @@
 #!/usr/bin/env ruby
 
 require 'rubygems'
-require 'bundler/setup'
+if not require 'bundler/setup' then
+  $stderr.puts "Please install the bundler gem to proceed."
+  exit(1)
+end
 
 # Requirements for actual running
 require 'yaml'
@@ -23,14 +26,53 @@ MIN_RECONNECT_RATE = 60
 # when handed a signal
 BOT_DC_TIMEOUT = 5
 
+# The logging level to use when loading log configs
+BOOTSTRAP_LOG_LEVEL = Logger::DEBUG
+
+
 # =====================
-# Load into a persisten object so we can save later
-config_file  = ARGV[0] || "config/config.yml"
-config       = PersistentHash.new(config_file, true)
+# Load into a persistent object so we can save later
+config_file   = ARGV[0] || "config/config.yml"
+config        = PersistentHash.new(config_file, true)
+$log          = MultiOutputLogger.new({:level => BOOTSTRAP_LOG_LEVEL}, config[:logging][:progname])
+
+# =====================
+# Configure environment system
+#
+if(config[:environment])
+  if not config[:modes][config[:environment]].is_a? Hash then
+    $log.fatal "Invalid environment: #{config[:environment]}!"
+    exit(1)
+  end
+
+  $log.info "Starting in #{config[:environment]} mode..."
+  overrides = 0
+  recursive_merge = lambda{|default, override|
+      # if the thing to override is not a hash, don't probe further
+      return override if not override.is_a? Hash
+
+      # pre-log, but warn the user
+      $log.warn "WARNING: Overriding environment config that does not exist." if not default
+
+      # Each override, overwrite default value
+      override.each{|k, v|
+        default[k] = recursive_merge.call(default[k], v)
+        overrides += 1
+      }
+
+      # Send the overridden values back
+      return default
+    }
+
+  # Merge configs
+  config = recursive_merge.call(config, config[:modes][config[:environment]])
+  $log.info "Done (changed #{overrides} configs)."
+end
 
 
 # =====================
 # Then, create global log
+$log.info "Bootstrapping logs..."
 logdevs = []
 config[:logging][:logs].each{|name, ldopts| 
   # Construct the log
@@ -41,8 +83,15 @@ config[:logging][:logs].each{|name, ldopts|
   # Add to the list of logs
   logdevs << ld
 }
-$log = MultiOutputLogger.new(logdevs, config[:logging][:progname])
+# Remove log used during the bootstrap
+# then add the new ones and report
+$log.remove_log(:default)
+$log.configure_logs(logdevs)  
 $log.summarise_logging
+
+
+
+
 
 # =====================
 # Handle signals nicely.
@@ -100,7 +149,7 @@ rescue SignalException => Se
     $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s)"
     begin
       Timeout::timeout(BOT_DC_TIMEOUT){
-        bot.disconnect
+        bot.disconnect("Caught signal.")
       }
     rescue Timeout::Error => TMe
     end

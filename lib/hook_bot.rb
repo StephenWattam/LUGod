@@ -74,8 +74,8 @@ class HookBot
     handler   = self
 
     # Configure the bot
-    @bot = Isaac::Bot.new do
-      configure{|c|
+    @bot = Isaac::Bot.new
+    @bot.configure{|c|
         c.server   = conf[:server]
         c.port     = conf[:port]
         c.ssl      = conf[:ssl]
@@ -85,109 +85,109 @@ class HookBot
 
         c.environment = :production
         c.verbose     = conf[:verbose] || false 
+        c.log         = $log
         #c.verbose     = false 
-      }
+    }
 
-      # NAMES Reply
-      on :"353" do 
-        begin
-          nicks = raw_msg.params[3].split.map{|n| handler.normalise_nick(n)}
-          $log.debug "NAMES: #{nicks}"
-          handler.register_names(nicks) #if @awaiting_names_list
-        rescue Exception => e
-          $log.warn e.to_s
-          $log.debug e.backtrace.join("\n")
-        end
+    # NAMES Reply
+    @bot.on :"353" do 
+      begin
+        nicks = raw_msg.params[3].split.map{|n| handler.normalise_nick(n)}
+        $log.debug "NAMES: #{nicks}"
+        handler.register_names(nicks) #if @awaiting_names_list
+      rescue Exception => e
+        $log.warn e.to_s
+        $log.debug e.backtrace.join("\n")
       end
+    end
 
-      # End of names
-      on :"366" do
-        begin
-          $log.debug "END OF NAMES:"
-          handler.end_names_list
-        rescue Exception => e
-          $log.warn e.to_s
-          $log.debug e.backtrace.join("\n")
-        end
+    # End of names
+    @bot.on :"366" do
+      begin
+        $log.debug "END OF NAMES:"
+        handler.end_names_list
+      rescue Exception => e
+        $log.warn e.to_s
+        $log.debug e.backtrace.join("\n")
       end
+    end
 
-      # 433 to handle nick in use
-      on :error do
-        begin
-        if raw_msg.params[2] == "Nickname is already in use."
-          handler.changenick
-        end
-        rescue Exception => e
-          $log.warn e.to_s
-          $log.debug e.backtrace.join("\n")
-        end
+    # 433 to handle nick in use
+    @bot.on :error do
+      begin
+      if raw_msg.params[2] == "Nickname is already in use."
+        handler.changenick
       end
-
-      # Someone parted
-      on :part do
-        begin
-          $log.debug "PART: #{nick} #{raw_msg.params}"
-          handler.nick_part(handler.normalise_nick(nick), raw_msg.params[1]) if raw_msg.params[0] == conf[:channel]
-        rescue Exception => e
-          $log.warn e.to_s
-          $log.debug e.backtrace.join("\n")
-        end
+      rescue Exception => e
+        $log.warn e.to_s
+        $log.debug e.backtrace.join("\n")
       end
+    end
 
-      on :quit do
-        begin
-          $log.debug "QUIT: #{nick} #{raw_msg.params}"
-          handler.nick_quit(handler.normalise_nick(nick), raw_msg.params[1]) if raw_msg.params[0] == conf[:channel]
-        rescue Exception => e
-          $log.warn e.to_s
-          $log.debug e.backtrace.join("\n")
-        end
+    # Someone parted
+    @bot.on :part do
+      begin
+        $log.debug "PART: #{nick} #{raw_msg.params}"
+        handler.nick_part(handler.normalise_nick(nick), raw_msg.params[1]) if raw_msg.params[0] == conf[:channel]
+      rescue Exception => e
+        $log.warn e.to_s
+        $log.debug e.backtrace.join("\n")
       end
+    end
 
-      on :join do
-        begin
-          $log.debug "JOIN: #{nick}"
-          handler.nick_join(handler.normalise_nick(nick))
-        rescue Exception => e
-          $log.warn e.to_s
-          $log.debug e.backtrace.join("\n")
-        end
-        
+    @bot.on :quit do
+      begin
+        $log.debug "QUIT: #{nick} #{raw_msg.params}"
+        handler.nick_quit(handler.normalise_nick(nick), raw_msg.params[1]) if raw_msg.params[0] == conf[:channel]
+      rescue Exception => e
+        $log.warn e.to_s
+        $log.debug e.backtrace.join("\n")
       end
+    end
 
-      on :nick do
-        begin
-          $log.debug "NICK CHANGE: #{nick} #{raw_msg.params}"
-          handler.nick_change(handler.normalise_nick(nick), raw_msg.params[0])
-        rescue Exception => e
-          $log.warn e.to_s
-          $log.debug e.backtrace.join("\n")
-        end
+    @bot.on :join do
+      begin
+        $log.debug "JOIN: #{nick}"
+        handler.nick_join(handler.normalise_nick(nick))
+      rescue Exception => e
+        $log.warn e.to_s
+        $log.debug e.backtrace.join("\n")
       end
+      
+    end
 
-      on :connect do
-        $log.debug "IRC connected, joining #{conf[:channel]}."
-        join conf[:channel]
+    @bot.on :nick do
+      begin
+        $log.debug "NICK CHANGE: #{nick} #{raw_msg.params}"
+        handler.nick_change(handler.normalise_nick(nick), raw_msg.params[0])
+      rescue Exception => e
+        $log.warn e.to_s
+        $log.debug e.backtrace.join("\n")
       end
+    end
 
-      on :channel do
-        $log.debug "IRC Channel message received"
-        begin
-          handler.handle_channel_message(handler.normalise_nick(nick), message, raw_msg)
-        rescue Exception => e
-          $log.warn e.to_s
-          $log.debug e.backtrace.join("\n")
-        end
+    @bot.on :connect do
+      $log.debug "IRC connected, joining #{conf[:channel]}."
+      join conf[:channel]
+    end
+
+    @bot.on :channel do
+      $log.debug "IRC Channel message received"
+      begin
+        handler.handle_channel_message(handler.normalise_nick(nick), message, raw_msg)
+      rescue Exception => e
+        $log.warn e.to_s
+        $log.debug e.backtrace.join("\n")
       end
+    end
 
-      on :private do
-        $log.debug "IRC Privmsg received."
-        begin
-          handler.handle_private_message(handler.normalise_nick(nick), message, raw_msg)
-        rescue Exception => e
-          $log.warn e.to_s
-          $log.debug e.backtrace.join("\n")
-        end
+    @bot.on :private do
+      $log.debug "IRC Privmsg received."
+      begin
+        handler.handle_private_message(handler.normalise_nick(nick), message, raw_msg)
+      rescue Exception => e
+        $log.warn e.to_s
+        $log.debug e.backtrace.join("\n")
       end
     end
   end
@@ -274,7 +274,13 @@ class HookBot
   end
 
   # Close the bot's connection to the server
-  def disconnect
+  def disconnect(reason = nil)
+    # Stop the bot processing anything
+    #@bot.halt
+    
+    # Quit
+    @bot.quit reason
+
     # TODO: there may be a 'halt' in isaac
     $log.error "STUB: I don't know how to disconnect yet!"
   end
@@ -309,12 +315,13 @@ private
   def dispatch_hooks(nick, message, raw_msg, hooks)
     hooks.each{|name, hook|
       trigger, p = hook[:trigger], hook[:proc]
-      $log.debug "Inspecing hook '#{name}' [#{trigger.call(nick, message, raw_msg)}]"
+      $log.debug "Inspecting hook '#{name}' [#{trigger.call(nick, message, raw_msg)}]"
 
       begin
         if(trigger.call(nick, message, raw_msg)) then
           $log.debug "Dispatching hook for '#{message}'..."
           p.call(nick, message, raw_msg)
+          $log.debug "Finished."
         end
       rescue Exception => e
         say("Error in #{name}: #{e}")

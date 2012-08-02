@@ -1,89 +1,116 @@
 require 'socket'
+require 'logger'
 
 module Isaac
   VERSION = '0.2.1'
 
-  Config = Struct.new(:server, :port, :ssl, :password, :nick, :realname, :version, :environment, :verbose)
+  Config = Struct.new(:server, :port, :ssl, :password, :nick, :realname, :version, :environment, :verbose, :log)
 
   class Bot
-    attr_accessor :config, :irc, :nick, :channel, :message, :user, :host, :match,
-      :error, :raw_msg
+    # Access config properties
+    attr_accessor :config, :irc, :nick, :channel, :message, :user, :host, :match, :error, :raw_msg, :log
 
+    # Initialise with a block for caling :on, etc
     def initialize(&b)
       @events = {}
-      @config = Config.new("localhost", 6667, false, nil, "isaac", "Isaac", 'isaac', :production, false)
+      @config = Config.new("localhost", 6667, false, nil, "isaac", "Isaac", 'isaac', :production, false, Logger.new(nil))
 
       instance_eval(&b) if block_given?
     end
+   
+    # Convenience 
+    def log
+      @config.log
+    end
 
+    # Is the bot currently connected?
     def connected?
       (@irc) ? @irc.connected? : false
     end
 
+    # Configure by assigning things to the called back object
     def configure(&b)
       b.call(@config)
+      @config.log = Logger.new(nil) if not @config.verbose
     end
 
+    # Add a handler
     def on(event, match=//, &block)
       match = match.to_s if match.is_a? Integer
       (@events[event] ||= []) << [Regexp.new(match), block]
+      log.info "Registered callback: #{event}, rx=#{match}"
     end
 
+    # Configure further (same as .new)
     def helpers(&b)
       instance_eval(&b)
     end
 
+    # Stop the bot
     def halt
       throw :halt
     end
 
+    # Send raw info to IRC
     def raw(command)
+      log.debug "Sending #{command}"
       @irc.message(command)
     end
 
+    # Send a message to IRC
     def msg(recipient, text)
       raw("PRIVMSG #{recipient} :#{text}")
     end
 
+    # Send an action to IRC
     def action(recipient, text)
       raw("PRIVMSG #{recipient} :\001ACTION #{text}\001")
     end
 
+    # Join a channel
     def join(*channels)
       channels.each {|channel| raw("JOIN #{channel}")}
     end
 
+    # Part a channel
     def part(*channels)
       channels.each {|channel| raw("PART #{channel}")}
     end
 
+    # Change a topic
     def topic(channel, text)
       raw("TOPIC #{channel} :#{text}")
     end
 
+    # Set the mode for a channel
     def mode(channel, option)
       raw("MODE #{channel} #{option}")
     end
 
+    # Kick a user from a channel
     def kick(channel, user, reason=nil)
       raw("KICK #{channel} #{user} :#{reason}")
     end
 
+    # Quit entirely
     def quit(message=nil)
       command = message ? "QUIT :#{message}" : "QUIT"
       raw command
     end
 
+    # Connect and start doing stuff.
     def start
-      puts "Connecting to #{@config.server}:#{@config.port}" unless @config.environment == :test
+      log.info "Connecting to #{@config.server}:#{@config.port}" unless @config.environment == :test
       @irc = IRC.new(self, @config)
       @irc.connect
     end
 
+    # The current message being parsed
     def message
       @message ||= ""
     end
 
+    # Dispatch an event using the hook system
     def dispatch(event, msg=nil)
       if msg
         @nick, @user, @host, @channel, @error, @message, @raw_msg = 
@@ -92,18 +119,21 @@ module Isaac
 
       if handler = find(event, message)
         regexp, block = *handler
-        self.match = message.match(regexp).captures
+        self.match    = message.match(regexp).captures
         invoke block
       end
     end
 
   private
+    # Find events for a given message
     def find(type, message)
       if events = @events[type]
         events.detect {|regexp,_| message.match(regexp)}
       end
     end
 
+    # Invoke a callback
+    # this is really quite cunning
     def invoke(block)
       mc = class << self; self; end
       mc.send :define_method, :__isaac_event_handler, &block
@@ -118,23 +148,33 @@ module Isaac
       end
 
       catch(:halt) { 
-        __isaac_event_handler(*bargs) }
+        __isaac_event_handler(*bargs) 
+      }
     end
   end
 
+  # Handles low-level IRC communications
   class IRC
     def initialize(bot, config)
-      @bot, @config = bot, config
-      @transfered = 0
-      @registration = []
+      @bot, @config   = bot, config
+      @transfered     = 0
+      @registration   = []
     end
-
+ 
+    # Convenience 
+    def log
+      @bot.config.log
+    end
+    
+    # Is this still connected?
     def connected?
       # TODO: make this a bit more accurate
       !@socket.nil? 
     end
 
+    # Connect to IRC
     def connect
+      $log.info "Connecting to #{@config.server}:#{@config.port}..."
       tcp_socket = TCPSocket.open(@config.server, @config.port)
 
       if @config.ssl
@@ -148,7 +188,7 @@ module Isaac
         ssl_context.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
         unless @config.environment == :test
-          puts "Using SSL with #{@config.server}:#{@config.port}"
+          $log.info "Using SSL with #{@config.server}:#{@config.port}"
         end
 
         @socket = OpenSSL::SSL::SSLSocket.new(tcp_socket, ssl_context)
@@ -158,19 +198,22 @@ module Isaac
         @socket = tcp_socket
       end
 
+      # Set configs up on first connect
       @queue = Queue.new(@socket, @bot.config.server)
       message "PASS #{@config.password}" if @config.password
       message "NICK #{@config.nick}"
       message "USER #{@config.nick} 0 * :#{@config.realname}"
       @queue.lock
 
+      # Then handle input
       while line = @socket.gets
         parse line
       end
     end
 
+    # Handle all comms from the server
     def parse(input)
-      puts "<< #{input}" if @bot.config.verbose
+      log.debug "Received #{input}" if @bot.config.verbose
       #puts "<< #{input.unpack('A' * input.length).join(",")}" if @bot.config.verbose
       msg = Message.new(input)
 
@@ -212,15 +255,18 @@ module Isaac
   class Message
     attr_accessor :raw, :prefix, :command, :params
 
+    # Create a shiny new Message
     def initialize(msg=nil)
       @raw = msg
       parse if msg
     end
 
+    # Is this command numeric or not?
     def numeric_reply?
       @numeric_reply ||= !!@command.match(/^\d\d\d$/)
     end
 
+    # Parse a command to find its type, params, prefix.
     def parse
       match = @raw.match(/(^:(\S+) )?(\S+)(.*)/)
       _, @prefix, @command, raw_params = match.captures
@@ -236,40 +282,48 @@ module Isaac
       end
     end
 
+    # The nick responsible for the message
     def nick
       return unless @prefix
       @nick ||= @prefix[/^(\S+)!/, 1]
     end
 
+    # The user responsible for the message
     def user
       return unless @prefix
       @user ||= @prefix[/^\S+!(\S+)@/, 1]
     end
 
+    # The host responsible for the message
     def host
       return unless @prefix
       @host ||= @prefix[/@(\S+)$/, 1]
     end
 
+    # The server that sent the message
     def server
       return unless @prefix
       return if @prefix.match(/[@!]/)
       @server ||= @prefix[/^(\S+)/, 1]
     end
 
+    # Has this errored?
     def error?
       !!error
     end
 
+    # What is the error (if #error?)
     def error
       return @error if @error
       @error = command.to_i if numeric_reply? && command[/[45]\d\d/]
     end
 
+    # Is this message attached to a channel?
     def channel?
       !!channel
     end
 
+    # What channel sent the message, if #channel?
     def channel
       return @channel if @channel
       if regular_command? and params.first.start_with?("#")
@@ -277,6 +331,7 @@ module Isaac
       end
     end
 
+    # What is the message body?
     def message
       return @message if @message
       if error?

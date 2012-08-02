@@ -6,18 +6,24 @@ class MultiOutputLogger < Logger
   # Create a simple log object with one log level and one device
   def initialize(logdevs = {}, progname=nil, shift_age = 0, shift_size = 1048576)
     super(nil, shift_age, shift_size)
-    @progname = progname
-    @shift_age = shift_age
-    @shift_size = shift_size
+    @progname     = progname
+    @shift_age    = shift_age
+    @shift_size   = shift_size
+    configure_logs(logdevs)
+  end
+
+  def configure_logs(logdevs = {})
+    # Remove all exsiting logs
+    @logdevs.each{|name, ld| remove_log(name)} if @logdevs
 
     # Parse logdevs hash options
-    @logdevs = {}
-    logdevs = [logdevs] if logdevs.class == Hash
+    @logdevs      = {}
+    logdevs       = [logdevs] if logdevs.class == Hash
 
     # If the user provides a device then set up a single log as :log
     if not logdevs.class == Array then
-      @logdevs[:default]  = {:dev => logdevs, :level => @level}
-      @lowest_level = @logdevs[:default][:level]
+      @logdevs[:default]    = {:dev => logdevs, :level => @level}
+      @lowest_level         = @logdevs[:default][:level]
       return
     end
       
