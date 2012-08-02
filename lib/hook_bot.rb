@@ -214,6 +214,12 @@ class HookBot
     end
   end
 
+  # Kick a user
+  def kick(nick, reason=nil)
+    # TODO: check we're op.
+    @bot.kick @config[:channel], nick, reason
+  end
+
   # Remove prefixes from a nick to make them comparable.
   def normalise_nick(nick)
     return /^[@+]?(.*)$/.match(nick)[1]

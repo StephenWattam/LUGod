@@ -6,6 +6,7 @@
   :nick: ^LUGod                         # The nickname to use
   :user: LUGod                          # The username for IRC
   :name: LU Master of All               # The full name of the user
+  :password: lugodpass                  # Nick auth
   :server: irc.freenode.net             # The server
   :channel: ! '#lucs'                   # El channel
   :port: 6667                           # Port
@@ -18,6 +19,7 @@
     - SpellService
     - ReminderService 
     - WolframService 
+    - Robot9KService 
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
   :logs:                                # A list of places to log to
@@ -34,11 +36,13 @@
   :debug:                               # This is merged with the config below to override it when testing
     :irc:
       :nick: ^LUGod_test
+      :password:                      # the test nick is not registered
       :channel: ! '#lucs-dev'
-      :verbose: false               # Enable/disable bot level logging
+      :verbose: false                  # Enable/disable bot level logging
     :hooks:
       :objs:
         - Echo
+        - Robot9KService 
     :logging:
       :logs:
         :default:

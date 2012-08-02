@@ -2,6 +2,7 @@
 
 # FIXME: this should be in services/wolfram
 require 'wolfram'
+require 'sqlite3'
 
 require 'rubygems'
 if not require 'bundler/setup' then
