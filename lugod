@@ -1,5 +1,8 @@
 #!/usr/bin/env ruby
 
+# FIXME: this should be in services/wolfram
+require 'wolfram'
+
 require 'rubygems'
 if not require 'bundler/setup' then
   $stderr.puts "Please install the bundler gem to proceed."
