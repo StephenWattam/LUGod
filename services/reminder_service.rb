@@ -17,58 +17,59 @@ class ReminderService < HookService
     @reminders.save(true)
   end
 
-  def monitor( nick, message, raw )
+  def monitor( nick )
     dcnick = nick.downcase
     return if not @reminders[dcnick] or @reminders[dcnick].length == 0
 
     while( @reminders[dcnick].length > 0 ) do
       r = @reminders[dcnick].pop
-      @bot.say( "[#{r[:time].strftime("%m/%d/%Y %I:%M%p")}] Reminder for #{nick}: #{r[:msg]}" )
+      @bot.say( "[#{r[:time].strftime("%m/%d/%Y %I:%M%p")}] #{r[:from]} (for #{nick}) : #{r[:msg]}" )
     end
 
     @reminders.save(true)
   end
   
-  def tell_override(user = nil, *msg)
+  def tell_override(from, user = nil, msg)
     if not user then
       @bot.say "Usage: !TELL nick \"a message to give to nick.\""
       return
     end
 
     # Add a reminder without an override
-    add_reminder(user, true, msg)
+    add_reminder(from, user, true, msg)
   end
 
-  def tell(user = nil, *msg)
+  def tell(from, user = nil, msg)
     if not user then
       @bot.say "Usage: !tell nick \"a message to give to nick.\""
       return
     end
 
     # Add a reminder without an override
-    add_reminder(user, false, msg)
+    add_reminder(from, user, false, msg)
   end
 
   def hook_thyself
-    @bot.register_hook(self, :channel, :tell, self.method(:monitor) )
-    @bot.register_hook(self, :cmd_channel, :tell_cmd, self.method(:tell), /tell/)
-    @bot.register_hook(self, :cmd_channel, :tell_override_cmd, self.method(:tell_override), /TELL/)
+    me = self
+    @bot.register_hook(self, :channel, :tell){ me.monitor nick }
+
+    @bot.register_hook(self, :cmd_channel, :tell_cmd, /tell/){|who = nil, *args| 
+      me.tell(nick, who, args.join(" "))
+    }
+
+    @bot.register_hook(self, :cmd_channel, :tell_override_cmd, /TELL/){|who = nil, *args|
+      me.tell_override(nick, who, args.join(" "))
+    }
   end
 
 private
-  def add_reminder(user, override, msg)
-
+  def add_reminder(from, user, override, message)
     # pre-parse
     to            = user.downcase
-    message       = msg.join(" ")
-    puts "----> #{msg.join(", ")}"
     raise "Message too short" if message.length < MIN_MESSAGE_LENGTH
 
     # ensure the list exists
-    @reminders[to] = [] if not @reminders[to]
-
-    puts "====> #{override}"
-
+    @reminders[to] ||= [] 
 
     # warn the user or bump stuff off the bottom
     bumped = false
@@ -79,7 +80,7 @@ private
     end
       
     # add to list
-    @reminders[to] << {:time => Time.now, :msg => message}
+    @reminders[to] << {:time => Time.now, :from => from, :msg => message}
     @reminders.save(true)
 
     if bumped

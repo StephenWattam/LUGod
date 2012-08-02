@@ -16,7 +16,6 @@ class HookBot
 
   # defines the command character and other minor command things
   COMMAND_RX = /^[!]([a-zA-Z0-9]+)(.*)?$/
-  ACTION_RX = /^\/me\s(.+)$/
 
   # Initialize the object and configure the bot
   def initialize(conf)
@@ -34,7 +33,9 @@ class HookBot
     configure
   end
 
-  def register_hook(owner, type, name, p, trigger=nil)
+  def register_hook(owner, type, name, trigger=nil, &p)
+    raise "Please define a block" if not block_given?
+
     # Alert user of hook types if they screw up
     raise "Not a hook type: #{type}" if not @hooks.keys.include? type
 
@@ -281,15 +282,13 @@ class HookBot
     # Quit
     @bot.quit reason
 
-    # TODO: there may be a 'halt' in isaac
-    $log.error "STUB: I don't know how to disconnect yet!"
   end
 
   # handle a message from the channel
   def handle_channel_message(nick, message, raw_msg)
     $log.info "Received a message from the Channel (#{nick}, #{message})"
     if(message =~ COMMAND_RX) then
-      handle_command(:irc, nick, message, @hooks[:cmd_channel])
+      handle_command(nick, message, raw_msg, @hooks[:cmd_channel])
     else
       dispatch_hooks(nick, message, raw_msg, @hooks[:channel])
     end
@@ -302,12 +301,12 @@ class HookBot
     say(PRIVATE_ECHO_FORMAT % message, nick)
     
     if(message =~ COMMAND_RX) then
-      handle_command(:irc, nick, message, @hooks[:cmd_private])
+      handle_command(nick, message, raw_msg, @hooks[:cmd_private])
     else
       dispatch_hooks(nick, message, raw_msg, @hooks[:private])
     end
   end
-
+  
 
 private
   
@@ -320,7 +319,7 @@ private
       begin
         if(trigger.call(nick, message, raw_msg)) then
           $log.debug "Dispatching hook for '#{message}'..."
-          p.call(nick, message, raw_msg)
+          invoke({:nick => nick, :message => message, :raw_msg => raw_msg}, p)
           $log.debug "Finished."
         end
       rescue Exception => e
@@ -333,10 +332,7 @@ private
 
 
   # Process commands only.
-  def handle_command(source, user, message, hooks)
-    # Only accept commands locally
-    return if source == :xmpp
-
+  def handle_command(nick, message, raw_msg, hooks)
     # Parse message
     message   =~ COMMAND_RX          
     cmd       = $1  
@@ -360,8 +356,9 @@ private
 
       if(cmd =~ trigger) then
         begin
+          $log.debug "Arity of block: #{p.arity}, args: #{args.length}"
           $log.debug "Dispatching command hook #{name} for #{cmd}..."
-          p.call(*args)
+          invoke({:nick => nick, :message => message, :raw_msg => raw_msg}, p, args)
         rescue Exception => e
           say("Error in #{name}: #{e}")
           $log.error "Error in callback for command: #{cmd} => #{e}"
@@ -370,5 +367,23 @@ private
       end
     }
   end
+
+
+  # Invoke something with certain vars set.
+  def invoke(vars, block, args=[])
+    cls = Class.new
+
+    # Set up pre-defined variables
+    vars.each{|n, v|
+      cls.send :define_method, n.to_sym, Proc.new{|| return v} 
+    }
+
+    # and the call that runs the hook
+    cls.send :define_method, :__hookbot_invoke, block
+
+    # then call
+    cls.new.__hookbot_invoke(*args)
+  end
+
 end
 

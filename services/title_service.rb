@@ -28,7 +28,7 @@ class TitleService < HookService
   TITLE_MULTIPLE_TEMPLATE = "Title %i/%i: %s"
 
 
-  def check_link( nick, message, raw )
+  def check_link( message )
     uris = URI.extract(message, ["http", "https"]).uniq
     #uris = (message.scan(URL_RX))
     $log.debug "Found #{uris.length} URLs in message."
@@ -60,10 +60,15 @@ class TitleService < HookService
   end
 
   def hook_thyself
-    @bot.register_hook(self, :channel, :titlefinder, self.method(:check_link), 
+    me = self
+    @bot.register_hook(self, :channel, :titlefinder,  
                       lambda{|nick, message, raw|
                         return message =~ URL_RX
-                      })
+                      }){
+
+                        me.check_link(message)
+
+                      }
   end
 
 private

@@ -9,13 +9,13 @@ class Echo < HookService
   end
 
   # Respond to a channel message
-  def echo_to_channel( nick, msg, raw )
+  def echo_to_channel( nick, msg )
     $log.debug "Received channel message, echoing..."
     @bot.say( msg ) 
   end
 
   # Respond to a channel message
-  def echo_to_stdout( nick, msg, raw )
+  def echo_to_stdout( nick, msg )
     $log.debug "Spewing crap to stdout..."
     puts "--- NICK #{nick} SAYS : #{msg}"
   end
@@ -24,14 +24,15 @@ class Echo < HookService
   # Arguments are provided as if they are direct,
   # i.e. two arguments can be caught with method(one, two),
   # varargs can be caught with method(one, *args), etc.
-  def echo_cmd( message )
+  def echo_cmd( msg )
     $log.info "Running command: echo..."
-    @bot.say( "you asked me to echo: #{message}" )
+    @bot.say( "you asked me to echo: #{msg}" )
     $log.info "Done running command: echo :-)"
   end
 
   # Add hooks.
   def hook_thyself
+    me = self
     # -------------------------------------------------------------------------------------------------------
     # 0) A simple hook to respond to everything
     #
@@ -44,18 +45,18 @@ class Echo < HookService
 
                        :echo_chan,                    # Call this hook echo_chan, so we can remove it individually later
 
-                       self.method(:echo_to_channel), # The procedure to call is one of our own methods
-                                                      # This can be any procedure that takes three arguments
-                        
                        nil                            # We wish to respond to every message, don't provide a trigger
                                                       # this will default to lambda{|*| return true}
-                      ) 
+                      ){                              # The block to call
 
-    # -------------------------------------------------------------------------------------------------------
-    # 1) Another simple hook, with a different ID (but same owner)
-    # 
-    # Same job but with a different name
-    @bot.register_hook(self, :channel, :echo_stdout, self.method(:echo_to_stdout))
+                        me.echo_to_channel(nick, message)
+
+                          } 
+
+    # Same, but echoes to stdout 
+    @bot.register_hook(self, :channel, :echo_stdout){
+      me.echo_to_stdout(nick, message)
+    }
 
     # -------------------------------------------------------------------------------------------------------
     # 2) A hook with a trigger expression
@@ -64,23 +65,27 @@ class Echo < HookService
     # Trigger expressions get the same arguments as ordinary hooks, and must make up their mind that way :-)
     #  - return false/nil to avoid handling, or
     #  - return any object to accept and trigger the handler.
-    @bot.register_hook(self, :channel, :echo_triggered, self.method(:echo_to_stdout),
+    @bot.register_hook(self, :channel, :echo_triggered,
                         lambda{|nick, message, raw_msg|     # This is the trigger expression,
                           return (message =~ /echo/)        # It is optional for all non-command hooks,
-                        }                                   # In this case, we just return true if the user types "echo"
-                      )
-
-    # -------------------------------------------------------------------------------------------------------
-    # 3) A command hook.
-    #
-    # This hooks a command.
-    # Command hooks do not carry a trigger expression, but a simple regex object
-    # 
-    # Commands are called natively (see example above), and arguments are parsed in line with Bash's
-    # shellword system, ie 
-    # "one argument" 
-    # one\ argument 
-    # two arguments
-    @bot.register_hook(self, :cmd_channel, :echo_cmd, self.method(:echo_cmd), /[Ee]cho/)
+    }){                            # In this case, we just return true if the user types "echo"
+                        me.echo_to_channel nick, message
+                      }
+#
+#    # -------------------------------------------------------------------------------------------------------
+#    # 3) A command hook.
+#    #
+#    # This hooks a command.
+#    # Command hooks do not carry a trigger expression, but a simple regex object
+#    # 
+#    # Commands are called natively (see example above), and arguments are parsed in line with Bash's
+#    # shellword system, ie 
+#    # "one argument" 
+#    # one\ argument 
+#    # two arguments
+   
+    @bot.register_hook(self, :cmd_channel, :echo_cmd, /[Ee]cho/){|*args|
+      me.echo_cmd args.join(" ")
+    }
   end
 end

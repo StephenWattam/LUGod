@@ -35,6 +35,9 @@
       :nick: ^LUGod_test
       :channel: ! '#lucs-dev'
       :verbose: false               # Enable/disable bot level logging
+#    :hooks:
+#      :objs:
+#        - Echo
     :logging:
       :logs:
         :default:
