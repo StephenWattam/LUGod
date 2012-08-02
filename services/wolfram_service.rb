@@ -35,16 +35,19 @@ class WolframService < HookService
 
       if(p.plaintext.length > 0) then
         stypes = p.types.map{|x| x.to_s}
+        valid = true
         USELESS_TYPES.each{|ut|
-          if not stypes.include? ut then
-            # valid answer
-            if stypes.include? "Wolfram::Result::Identity" then
-              identity  << p.plaintext.gsub("|", ":").gsub(/\n/, ", ")
-            else
-              msg       << p.plaintext.gsub("|", ":").gsub(/\n/, ", ")
-            end
-          end
+          valid = false if stypes.include? ut
         }
+
+
+        # valid answer
+        if stypes.include? "Wolfram::Result::Identity" then
+          identity  << p.plaintext.gsub("|", ":").gsub(/\n/, ", ")
+        else
+          msg       << p.plaintext.gsub("|", ":").gsub(/\n/, ", ")
+        end
+        
 
       end
     }
