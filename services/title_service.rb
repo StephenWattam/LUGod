@@ -42,6 +42,7 @@ class TitleService < HookService
     titles = []
     uris.each{|raw_uri|
       if(title = get_title(URI.parse(raw_uri))) then
+
         # shorten if necessary and add to list
         title = title[0..(MAX_TITLE_LENGTH-3)] + "..." if(title.length > MAX_TITLE_LENGTH)
         titles << title if title.length > MIN_TITLE_LENGTH 
@@ -49,12 +50,12 @@ class TitleService < HookService
     }
 
     # Output counts if there are multiple links
-    if(titles.length > 1)
+    if titles.length > 1 
       c = 0
       titles.each{|t|
         @bot.say(TITLE_MULTIPLE_TEMPLATE% [c+=1, titles.length, t]) 
       }
-    else
+    elsif titles.length > 0
       @bot.say(TITLE_TEMPLATE % titles[0])
     end
   end
