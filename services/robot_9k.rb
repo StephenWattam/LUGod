@@ -54,7 +54,7 @@ class Robot9KService < HookService
       me.check(nick, message)
     }
     
-    @bot.register_command(:r9k, /r9k/, [:channel, :private]){|user = nil|
+    @bot.register_command(:r9k, /r9k/, :channel){|user = nil|
       me.report( user || nick )
     }
   end

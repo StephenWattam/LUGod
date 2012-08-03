@@ -27,7 +27,7 @@ class HookBot
     configure
   end
 
-
+  # Register a command, only invoked when COMMAND_RX is triggered.
   def register_command(name, trigger, types = :channel, &p)
     raise "Please define a block" if not block_given?
  
@@ -45,6 +45,7 @@ class HookBot
     $log.info "Registered command '#{name}' for trigger #{trigger} (listening to #{types.length} types)"
   end
 
+  # Register a hook to be run on any message
   def register_hook(name, trigger = nil, types = :channel, &p)
     raise "Please define a block" if not block_given?
     trigger ||= lambda{|*| return true}
@@ -128,7 +129,7 @@ class HookBot
   end
 
   def dispatch(type, nick, message, raw_msg)
-    $log.info "Received a message of type (#{type}, #{message})"
+    $log.debug "Received a message of type #{type}: #{message}"
     if(message =~ COMMAND_RX) then
       dispatch_command(nick, message, raw_msg, @cmds[type])
     else
@@ -163,7 +164,6 @@ class HookBot
     
     # Quit
     @bot.quit reason
-
   end
 
 private

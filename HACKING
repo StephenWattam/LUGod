@@ -1,0 +1,34 @@
+	
+-------------------------------------------------------------------------------
+					  Coding conventions for LUGod
+-------------------------------------------------------------------------------
+
+
+						Indents and Whitespace
+-------------------------------------------------------------------------------
+This project uses ruby coding conventions.  This means 2-space wide indents for
+all features, and NO TABS!  Notably, YAML files will fail to parse if you break
+this convention.
+
+If you wish to apply this automagically in vim, use the following settings:
+autocmd FileType ruby setlocal expandtab shiftwidth=2 tabstop=2 softtabstop=2
+
+Lists of assignments should be aligned vertically such that their operators line
+up.
+
+
+								Method Naming
+-------------------------------------------------------------------------------
+Methods should, again, follow core ruby conventions of lowercase,
+underscore-separated verb_noun pairs.
+
+
+								Parentheses
+-------------------------------------------------------------------------------
+This is a bit more fluid.  In general:
+
+  a) Where a function is called, use parentheses.
+  b) Where an expression is used, avoid parentheses, but:
+  c) Where an expression must be nested, use parentheses only on the inner
+     expressions.  Ruby will fail to lex the thing otherwise.
+
