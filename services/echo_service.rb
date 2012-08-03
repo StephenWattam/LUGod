@@ -3,8 +3,8 @@
 class Echo < HookService
 
   # Init and print a nice message
-  def initialize(bot)
-    super(bot)
+  def initialize(bot, config)
+    super(bot, config)
     puts "--- ECHO INITIALIZED"
   end
 

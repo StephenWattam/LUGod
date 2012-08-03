@@ -2,32 +2,12 @@
 require 'digest/md5'
 
 class Robot9KService < HookService
-  
-  # Storage config
-  DATABASE_PATH = "config/r9k.db"
-  WARNING_PATH  = "config/r9k.bans.yml"
-
-  # Warnings config
-  WARNINGS      = 3
-  RECOVERY_RATE = 0.2
-  MAX_RECOVERY  = 5
-
-  REASON        = "Too many repetitions (score: %d < 0)"
-
-  # DB Config
-  PRAGMA        =  {"locking_mode"  => "EXCLUSIVE",
-                    "cache_size"    => 20000,
-                    "synchronous"   => 0,
-                    "temp_store"    => 2
-                   }
-  TABLE         = "msg"
-  FIELD         = "hash"
-
+ 
   # Connect to db
-  def initialize(bot)
-    super(bot)
-    @db   = DatabaseConnection.new(DATABASE_PATH, 100, PRAGMA)
-    @bans = PersistentHash.new(WARNING_PATH, true)
+  def initialize(bot, config)
+    super(bot, config)
+    @db   = DatabaseConnection.new(@config[:database_path], 100, @config[:pragma])
+    @bans = PersistentHash.new(@config[:warning_path], true)
   end
 
   # check something against the db
@@ -36,34 +16,34 @@ class Robot9KService < HookService
     hash  = Digest::MD5.hexdigest("#{message.strip}")
   
     # Check the scores
-    @bans[nick] ||= WARNINGS
+    @bans[nick] ||= @config[:warnings]
 
     # check the db
-    res   = @db.select TABLE, [FIELD], "#{FIELD}=#{@db.escape(hash)}"
+    res   = @db.select @config[:table], [@config[:field]], "#{@config[:field]}=#{@db.escape(hash)}"
     if res.length > 0 then
       @bans[nick] -= 1
     else
-      @bans[nick] = [@bans[nick] + RECOVERY_RATE, MAX_RECOVERY].min
+      @bans[nick] = [@bans[nick] + @config[:recovery_rate], @config[:max_recovery]].min
     end
 
     # kick the user if they violate the level
     if @bans[nick] < 0 then
-      @bot.kick(nick, REASON % @bans[nick].round(2))
+      @bot.kick(nick, @config[:reason] % @bans[nick].round(2))
       @bans[nick] = 0
     elsif @bans[nick] <= 1 then
-      @bot.say "Stop repeating yourself, #{nick}!"
+      @bot.say "Stop repeating things, #{nick}!"
     end
 
     # Save the bans list
     @bans.save true
 
     # insert
-    @db.insert( TABLE, {FIELD => hash} )
+    @db.insert( @config[:table], {@config[:field] => hash} )
   end
 
   # Tell the user what to do
   def report( nick )
-    @bot.say "Score for #{nick}: #{@bans[nick] ||= WARNINGS}" #<= #{MAX_RECOVERY} += #{RECOVERY_RATE}"
+    @bot.say "Score for #{nick}: #{(@bans[nick] ||= @config[:warnings]).round(2)}" #<= #{@config[:max_recovery]} += #{RECOVERY_RATE}"
   end
   
 

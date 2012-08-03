@@ -1,0 +1,7 @@
+---
+:max_urls_per_msg: 5
+:min_title_length: 5
+:max_title_length: 200
+:max_redirects: 5
+:title_template: "Title: %s"
+:title_multiple_template: "Title %i/%i: %s"

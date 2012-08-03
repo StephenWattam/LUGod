@@ -2,8 +2,9 @@
 # Superclass of all hooks
 class HookService
  
-  def initialize(bot)
-    @bot = bot
+  def initialize(bot, config)
+    @bot    = bot
+    @config = config
   end
 
   # Release any resources

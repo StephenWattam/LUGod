@@ -1,0 +1,5 @@
+---
+:app_id: "WGXEAJ-HQ4VLHPU4E"
+:useless_types:
+  - "Wolfram::Result::NumberLine"
+  - "Wolfram::Result::Traveling"

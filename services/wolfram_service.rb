@@ -3,13 +3,10 @@
 
 class WolframService < HookService
 
-  APP_ID = "WGXEAJ-HQ4VLHPU4E"
-  USELESS_TYPES = %w{Wolfram::Result::NumberLine Wolfram::Result::Traveling}
 
-
-  def initialize(bot)
-    super(bot)
-    Wolfram.appid = APP_ID
+  def initialize(bot, config)
+    super(bot, config)
+    Wolfram.appid = @config[:app_id] 
   end
 
 
@@ -36,7 +33,7 @@ class WolframService < HookService
       if(p.plaintext.length > 0) then
         stypes = p.types.map{|x| x.to_s}
         valid = true
-        USELESS_TYPES.each{|ut|
+        @config[:useless_types].each{|ut|
           valid = false if stypes.include? ut
         }
 

@@ -122,7 +122,9 @@ bot = HookBot.new(config[:irc])
 config[:hooks][:objs].each{|h|
   
   # Create the hook object with a reference to the bot
-  hook = eval("#{h}.new(bot)")
+  $log.info "Registering #{h}..."
+  hook_config   = PersistentHash.new( File.join(config[:hooks][:config_dir], "#{h}.yml"), true ) 
+  hook          = eval("#{h}.new(bot, hook_config)")
   hook.hook_thyself
 
   # Check it makes sense to use callbacks on it

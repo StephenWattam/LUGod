@@ -1,5 +1,5 @@
 ---
-:environment:                       # Merge the contents of the :testing hash.  Enter nil to use production values
+:environment:                        # Merge the contents of the :testing hash.  Enter nil to use production values
 :bot_connection_poll_rate: 120          # Check every n seconds that the bot is still conected
 :irc:
   :connect_timeout: 10                  # How long to check we're connected if verify is true
@@ -13,6 +13,7 @@
   :verbose: false                       # turn logging on/off for the bot
 :hooks:
   :dir: services/                       # Where service objects are located
+  :config_dir: config/services/         # Where service objects' config files are located
   :objs:                                # A list of service object names (instantiated with eval)
     #- Echo
     - TitleService
@@ -39,10 +40,10 @@
       :password:                      # the test nick is not registered
       :channel: ! '#lucs-dev'
       :verbose: false                  # Enable/disable bot level logging
-    :hooks:
-      :objs:
-        - Echo
-        - Robot9KService 
+#   :hooks:
+#      :objs:
+#        - Echo
+#        - Robot9KService 
     :logging:
       :logs:
         :default:

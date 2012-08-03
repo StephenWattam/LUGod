@@ -14,19 +14,6 @@ class TitleService < HookService
   # check the title makes sense
   TITLE_RX = /<\s*title\s*>(.*)<\s*\/\s*title\s*>/mi
 
-  # Don't resolve more than 5 URIs
-  MAX_URLS_PER_MSG = 5
-
-  # minmax lengths
-  MIN_TITLE_LENGTH = 5
-  MAX_TITLE_LENGTH = 200
-
-  # Number of redirects to follow
-  MAX_REDIRECTS = 5
-
-  TITLE_TEMPLATE = "Title: %s"
-  TITLE_MULTIPLE_TEMPLATE = "Title %i/%i: %s"
-
 
   def check_link( message )
     uris = URI.extract(message, ["http", "https"]).uniq
@@ -34,7 +21,7 @@ class TitleService < HookService
     $log.debug "Found #{uris.length} URLs in message."
 
     # Check max and let the user know we haven't just died.
-    if(uris.length > MAX_URLS_PER_MSG)
+    if(uris.length > @config[:max_urls_per_msg])
       @bot.say( "Too many links :-(")
       return
     end
@@ -44,8 +31,8 @@ class TitleService < HookService
       if(title = get_title(URI.parse(raw_uri))) then
 
         # shorten if necessary and add to list
-        title = title[0..(MAX_TITLE_LENGTH-3)] + "..." if(title.length > MAX_TITLE_LENGTH)
-        titles << title if title.length > MIN_TITLE_LENGTH 
+        title = title[0..(@config[:max_title_length]-3)] + "..." if(title.length > @config[:max_title_length])
+        titles << title if title.length > @config[:min_title_length]
       end
     }
 
@@ -53,10 +40,10 @@ class TitleService < HookService
     if titles.length > 1 
       c = 0
       titles.each{|t|
-        @bot.say(TITLE_MULTIPLE_TEMPLATE% [c+=1, titles.length, t]) 
+        @bot.say(@config[:title_multiple_template]% [c+=1, titles.length, t]) 
       }
     elsif titles.length > 0
-      @bot.say(TITLE_TEMPLATE % titles[0])
+      @bot.say(@config[:title_template] % titles[0])
     end
   end
 
@@ -92,7 +79,7 @@ private
 
       # Make head request
       head        = http.head(path)
-      redirects   = MAX_REDIRECTS
+      redirects   = @config[:max_redirects]
       while head.kind_of?(Net::HTTPRedirection) do
         path        = head['location']
         head        = http.head(head['location'])

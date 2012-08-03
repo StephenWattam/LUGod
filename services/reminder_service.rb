@@ -7,13 +7,10 @@ require 'raspell'
 
 class ReminderService < HookService
 
-  MAX_NUM_REMINDERS = 5
-  MIN_MESSAGE_LENGTH = 5
-  STORAGE_PATH = "./config/reminders.yml"
 
-  def initialize(bot)
-    super(bot)
-    @reminders = PersistentHash.new(STORAGE_PATH, true)
+  def initialize(bot, config)
+    super(bot, config)
+    @reminders = PersistentHash.new(@config[:storage_path], true)
     @reminders.save(true)
   end
 
@@ -66,7 +63,7 @@ private
   def add_reminder(from, user, override, message)
     # pre-parse
     to            = user.downcase
-    raise "Message too short" if message.length < MIN_MESSAGE_LENGTH
+    raise "Message too short" if message.length < @config[:min_message_length]
 
     # ensure the list exists
     @reminders[to] ||= [] 
@@ -76,7 +73,7 @@ private
     if(override)
       bumped = @reminders[to].delete_at(0)
     else
-      raise "Too many reminders already queued!  Use TELL to override, but you'll lose the oldest message." if @reminders[to].length >= MAX_NUM_REMINDERS
+      raise "Too many reminders already queued!  Use TELL to override, but you'll lose the oldest message." if @reminders[to].length >= @config[:max_num_reminders]
     end
       
     # add to list

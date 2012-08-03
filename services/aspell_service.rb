@@ -6,13 +6,11 @@ require 'raspell'
 
 class SpellService < HookService
 
-  LANGUAGE = "en_GB"
-  MAX_SUGGESTIONS = 15
 
-  def initialize(bot)
-    super(bot)
+  def initialize(bot, config)
+    super(bot, config)
     #raise "Please install the 'raspell' gem and aspell tool." if not 
-    @spell = Aspell.new(LANGUAGE)
+    @spell = Aspell.new(@config[:language])
     @spell.set_option("ignore-case", "true")
   end
 
@@ -26,7 +24,7 @@ class SpellService < HookService
     end
 
     suggestions = @spell.suggest(word)
-    @bot.say suggestions[0..([MAX_SUGGESTIONS, num_suggestions].min)].join(", ")
+    @bot.say suggestions[0..([@config[:max_suggestions], num_suggestions].min)].join(", ")
   end
 
   def hook_thyself

@@ -1,0 +1,17 @@
+--- 
+# Storage config
+:database_path:  "data/r9k.db"
+:warning_path:   "data/r9k.bans.yml"
+:warnings:       2
+:recovery_rate:  0.05
+:max_recovery:   3
+:reason:         "Too many repetitions (score: %d < 0)"
+:pragma:
+  "locking_mode": "EXCLUSIVE"
+  "cache_size": 20000
+  "synchronous": 0
+  "temp_store": 2
+:table:          "msg"
+:field:          "hash"
+
+

@@ -1,0 +1,4 @@
+---
+:max_num_reminders: 5
+:min_message_length: 5
+:storage_path: "./data/reminders.yml"
