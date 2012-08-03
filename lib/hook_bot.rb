@@ -6,13 +6,6 @@ class HookBot
   # all hooks
   attr_reader :names
 
-  # An empty hook container.
-  # Use this as the starting point for hooks
-  HOOK_FMT = {:channel      => {},
-              :private      => {},
-              :cmd_channel  => {},
-              :cmd_private  => {}
-              }
 
   # defines the command character and other minor command things
   COMMAND_RX = /^[!]([a-zA-Z0-9]+)(.*)?$/
@@ -27,39 +20,48 @@ class HookBot
     @names          = []
 
     # Keep track of hooks and what object owns what
-    @hooks          = HOOK_FMT 
+    @hooks          = {}
+    @cmds           = {} 
 
     # then configure
     configure
   end
 
-  def register_hook(owner, type, name, trigger=nil, &p)
+
+  def register_command(name, trigger, types = :channel, &p)
     raise "Please define a block" if not block_given?
+ 
 
-    # Alert user of hook types if they screw up
-    raise "Not a hook type: #{type}" if not @hooks.keys.include? type
+    types = [types] if not types.is_a? Array
 
-    # Set default to "all" for normal trigger type
-    # or give error if not
-    if(type.to_s =~ /^cmd_/) then
-      raise "Trigger is needed for command hooks" if not trigger
-    else
-      trigger = lambda{|*| return true} if not trigger
-    end
-   
-    # Also alert if it's already hooked
-    raise "That name (#{name}) is already hooked!" if @hooks[type][name]
+    types.each{|type|
+      # Ensure default and check we're not clobbering
+      @cmds[type] ||= {}
+      raise "That command is already hooked." if @cmds[type][name]
 
-    # finally, actually do it.
-    $log.info "Registered hook '#{name}' for type '#{type}' (owner = #{owner.class})."
-    @hooks[type][name] = {:owner => owner, :trigger => trigger, :proc => p}
+      # then register
+      @cmds[type][name] = {:trigger => trigger, :proc => p}
+    }
+    $log.info "Registered command '#{name}' for trigger #{trigger} (listening to #{types.length} types)"
   end
 
-  # Remove all hooks from a given owner
-  def unregister_all_hooks(owner)
-    @hooks.each{|name, hook|
-      unregister_hook(name) if hook[:owner] == owner
+  def register_hook(name, trigger = nil, types = :channel, &p)
+    raise "Please define a block" if not block_given?
+    trigger ||= lambda{|*| return true}
+    raise "Cannot call the trigger expression (type: #{trigger.class})!  Ensure it responds to call()" if not trigger.respond_to? :call
+   
+    # Ensure types is an array
+    types = [types] if not types.is_a? Array
+    
+    types.each{|type|
+      # Ensure defaults 
+      @hooks[type] ||= {}
+      raise "That command is already hooked." if @hooks[type][name]
+
+      # then register
+      @hooks[type][name] = {:trigger => trigger, :proc => p}
     }
+    $log.info "Registered hook '#{name}' for #{types.length} type[s]"
   end
 
   # Remove hook by name
@@ -90,107 +92,18 @@ class HookBot
         #c.verbose     = false 
     }
 
-    # NAMES Reply
-    @bot.on :"353" do 
+    @bot.register{
       begin
-        nicks = raw_msg.params[3].split.map{|n| handler.normalise_nick(n)}
-        $log.debug "NAMES: #{nicks}"
-        handler.register_names(nicks) #if @awaiting_names_list
+        join conf[:channel] if type == :connect 
+          
+        #$log.debug "Received message: #{type} #{message}"
+        handler.dispatch(type, nick, message, raw_msg)  # TODO: send a binding?
       rescue Exception => e
         $log.warn e.to_s
         $log.debug e.backtrace.join("\n")
       end
-    end
+    }
 
-    # End of names
-    @bot.on :"366" do
-      begin
-        $log.debug "END OF NAMES:"
-        handler.end_names_list
-      rescue Exception => e
-        $log.warn e.to_s
-        $log.debug e.backtrace.join("\n")
-      end
-    end
-
-    # 433 to handle nick in use
-    @bot.on :error do
-      begin
-      if raw_msg.params[2] == "Nickname is already in use."
-        handler.changenick
-      end
-      rescue Exception => e
-        $log.warn e.to_s
-        $log.debug e.backtrace.join("\n")
-      end
-    end
-
-    # Someone parted
-    @bot.on :part do
-      begin
-        $log.debug "PART: #{nick} #{raw_msg.params}"
-        handler.nick_part(handler.normalise_nick(nick), raw_msg.params[1]) if raw_msg.params[0] == conf[:channel]
-      rescue Exception => e
-        $log.warn e.to_s
-        $log.debug e.backtrace.join("\n")
-      end
-    end
-
-    @bot.on :quit do
-      begin
-        $log.debug "QUIT: #{nick} #{raw_msg.params}"
-        handler.nick_quit(handler.normalise_nick(nick), raw_msg.params[1]) if raw_msg.params[0] == conf[:channel]
-      rescue Exception => e
-        $log.warn e.to_s
-        $log.debug e.backtrace.join("\n")
-      end
-    end
-
-    @bot.on :join do
-      begin
-        $log.debug "JOIN: #{nick}"
-        handler.nick_join(handler.normalise_nick(nick))
-      rescue Exception => e
-        $log.warn e.to_s
-        $log.debug e.backtrace.join("\n")
-      end
-      
-    end
-
-    @bot.on :nick do
-      begin
-        $log.debug "NICK CHANGE: #{nick} #{raw_msg.params}"
-        handler.nick_change(handler.normalise_nick(nick), raw_msg.params[0])
-      rescue Exception => e
-        $log.warn e.to_s
-        $log.debug e.backtrace.join("\n")
-      end
-    end
-
-    @bot.on :connect do
-      $log.debug "IRC connected, joining #{conf[:channel]}."
-      join conf[:channel]
-    end
-
-    @bot.on :channel do
-      $log.debug "IRC Channel message received"
-      begin
-        handler.handle_channel_message(handler.normalise_nick(nick), message, raw_msg)
-      rescue Exception => e
-        $log.warn e.to_s
-        $log.debug e.backtrace.join("\n")
-      end
-    end
-
-    @bot.on :private do
-      $log.debug "IRC Privmsg received."
-      begin
-        handler.handle_private_message(handler.normalise_nick(nick), message, raw_msg)
-      rescue Exception => e
-        $log.warn e.to_s
-        $log.debug e.backtrace.join("\n")
-      end
-    end
   end
 
   def run(threaded=true, verify=true)
@@ -202,8 +115,8 @@ class HookBot
     end
 
     
+    # Wait for it to connect
     if(threaded and verify) then
-      # Wait for it to connect
       delay = 0
       while(not @bot.connected? and delay < @config[:connect_timeout]) do
         sleep(0.5)
@@ -214,48 +127,19 @@ class HookBot
     end
   end
 
+  def dispatch(type, nick, message, raw_msg)
+    $log.info "Received a message of type (#{type}, #{message})"
+    if(message =~ COMMAND_RX) then
+      dispatch_command(nick, message, raw_msg, @cmds[type])
+    else
+      dispatch_hooks(nick, message, raw_msg, @hooks[type])
+    end
+  end
+
   # Kick a user
   def kick(nick, reason=nil)
     # TODO: check we're op.
     @bot.kick @config[:channel], nick, reason
-  end
-
-  # Remove prefixes from a nick to make them comparable.
-  def normalise_nick(nick)
-    return /^[@+]?(.*)$/.match(nick)[1]
-  end
-
-  # A user has changed his/her nick.  Respond.
-  def nick_change(nick, new_nick)
-    @names.delete(nick) if @names.include?(nick)
-    @names << new_nick 
-  end
-
-  # A user has quit.
-  def nick_quit(nick, reason=nil)
-    nick_part(nick, reason)
-  end
-
-  # A user parts the channel
-  def nick_part(nick, reason=nil)
-    return if not @names.include?(nick)
-    @names.delete(nick)
-  end
-
-  def nick_join(nick)
-    return if @names.include?(nick)
-    @names << nick 
-  end
-
-  # Respond to a full name list
-  def register_names(names)
-    @names += names if @awaiting_names_list
-  end
-
-  # The server has stopped providing names
-  def end_names_list
-    @names.uniq!
-    @awaiting_names_list = false
   end
 
   def connected?
@@ -265,14 +149,6 @@ class HookBot
   # Say something to someone
   def say(msg, nick = @config[:channel])
     @bot.msg(nick, msg)
-  end
-
-  # Change bot's nick by adding a "_"
-  def changenick
-    @bot.config[:nick] += "_"
-    #@bot.raw("NICK #{@bot.config[:nick]}")
-    #@bot.raw("USER #{@bot.config[:nick]} 0 * :#{@bot.config[:realname]}")
-    @bot.start
   end
 
   # Action something.
@@ -290,34 +166,12 @@ class HookBot
 
   end
 
-  # handle a message from the channel
-  def handle_channel_message(nick, message, raw_msg)
-    $log.info "Received a message from the Channel (#{nick}, #{message})"
-    if(message =~ COMMAND_RX) then
-      handle_command(nick, message, raw_msg, @hooks[:cmd_channel])
-    else
-      dispatch_hooks(nick, message, raw_msg, @hooks[:channel])
-    end
-  end
-
-  # Handle a private session message
-  def handle_private_message(nick, message, raw_msg)
-    $log.info "Received a private message (#{nick}, #{message})"
-    
-    say(PRIVATE_ECHO_FORMAT % message, nick)
-    
-    if(message =~ COMMAND_RX) then
-      handle_command(nick, message, raw_msg, @hooks[:cmd_private])
-    else
-      dispatch_hooks(nick, message, raw_msg, @hooks[:private])
-    end
-  end
-  
-
 private
   
   # Dispatch things to hooks
   def dispatch_hooks(nick, message, raw_msg, hooks)
+    return if not hooks or hooks.length == 0
+
     hooks.each{|name, hook|
       trigger, p = hook[:trigger], hook[:proc]
       $log.debug "Inspecting hook '#{name}' [#{trigger.call(nick, message, raw_msg)}]"
@@ -338,7 +192,9 @@ private
 
 
   # Process commands only.
-  def handle_command(nick, message, raw_msg, hooks)
+  def dispatch_command(nick, message, raw_msg, hooks)
+    return if not hooks or hooks.length == 0
+
     # Parse message
     message   =~ COMMAND_RX          
     cmd       = $1  
@@ -373,7 +229,6 @@ private
       end
     }
   end
-
 
   # Invoke something with certain vars set.
   def invoke(vars, block, args=[])

@@ -1,5 +1,7 @@
 
 require 'digest/md5'
+gem 'sqlite3'
+require 'sqlite3'
 
 class Robot9KService < HookService
  
@@ -48,11 +50,11 @@ class Robot9KService < HookService
   # 
   def hook_thyself
     me = self
-    @bot.register_hook(self, :channel, :r9k){
+    @bot.register_hook(:r9k){
       me.check(nick, message)
     }
     
-    @bot.register_hook(self, :cmd_channel, :r9k, /r9k/){|user = nil|
+    @bot.register_command(:r9k, /r9k/, [:channel, :private]){|user = nil|
       me.report( user || nick )
     }
   end

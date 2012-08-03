@@ -1,5 +1,5 @@
 ---
-:environment:                        # Merge the contents of the :testing hash.  Enter nil to use production values
+:environment:                           # Merge the contents of the :testing hash.  Enter nil to use production values
 :bot_connection_poll_rate: 120          # Check every n seconds that the bot is still conected
 :irc:
   :connect_timeout: 10                  # How long to check we're connected if verify is true
@@ -20,7 +20,7 @@
     - SpellService
     - ReminderService 
     - WolframService 
-    - Robot9KService 
+    #- Robot9KService 
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
   :logs:                                # A list of places to log to
@@ -40,10 +40,9 @@
       :password:                      # the test nick is not registered
       :channel: ! '#lucs-dev'
       :verbose: false                  # Enable/disable bot level logging
-#   :hooks:
-#      :objs:
-#        - Echo
-#        - Robot9KService 
+    #:hooks:
+      #:objs:
+        #- Echo
     :logging:
       :logs:
         :default:

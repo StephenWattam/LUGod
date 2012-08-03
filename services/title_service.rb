@@ -48,14 +48,13 @@ class TitleService < HookService
   end
 
   def hook_thyself
-    me = self
-    @bot.register_hook(self, :channel, :titlefinder,  
-                      lambda{|nick, message, raw|
+    me      = self
+    trigger = lambda{|nick, message, raw|
                         return message =~ URL_RX
-                      }){
+                    }
 
+    @bot.register_hook(:titlefinder, trigger, :channel){
                         me.check_link(message)
-
                       }
   end
 

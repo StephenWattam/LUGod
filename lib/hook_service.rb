@@ -9,7 +9,6 @@ class HookService
 
   # Release any resources
   def unhook_thyself
-    @bot.unregister_all_hooks
   end
 
   # pullup and define hooks

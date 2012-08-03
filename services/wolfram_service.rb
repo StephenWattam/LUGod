@@ -1,5 +1,6 @@
 
-
+gem 'wolfram'
+require 'wolfram'
 
 class WolframService < HookService
 
@@ -70,7 +71,7 @@ class WolframService < HookService
 
   def hook_thyself
     me = self
-    @bot.register_hook(self, :cmd_channel, :ask, /ask/){|*args|
+    @bot.register_command(:ask, /ask/, [:channel, :private]){|*args|
       me.ask(args.join(" "))
     }
   end

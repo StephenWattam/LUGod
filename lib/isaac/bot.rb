@@ -8,11 +8,10 @@ module Isaac
 
   class Bot
     # Access config properties
-    attr_accessor :config, :irc, :nick, :channel, :message, :user, :host, :match, :error, :raw_msg, :log
+    attr_accessor :config, :irc, :nick, :channel, :message, :user, :host, :match, :error, :raw_msg, :log, :type
 
     # Initialise with a block for caling :on, etc
     def initialize(&b)
-      @events = {}
       @config = Config.new("localhost", 6667, false, nil, "isaac", "Isaac", 'isaac', :production, false, Logger.new(nil))
 
       instance_eval(&b) if block_given?
@@ -35,10 +34,13 @@ module Isaac
     end
 
     # Add a handler
-    def on(event, match=//, &block)
-      match = match.to_s if match.is_a? Integer
-      (@events[event] ||= []) << [Regexp.new(match), block]
-      log.info "Registered callback: #{event}, rx=#{match}"
+    def register(&block)
+      log.info "Registered client for hooks"
+      @hook = block
+    end
+
+    def unregister
+      @hook = nil
     end
 
     # Configure further (same as .new)
@@ -116,21 +118,12 @@ module Isaac
         @nick, @user, @host, @channel, @error, @message, @raw_msg = 
           msg.nick, msg.user, msg.host, msg.channel, msg.error, msg.message, msg
       end
+      @type = event
 
-      if handler = find(event, message)
-        regexp, block = *handler
-        self.match    = message.match(regexp).captures
-        invoke block
-      end
+      invoke @hook if @hook
     end
 
   private
-    # Find events for a given message
-    def find(type, message)
-      if events = @events[type]
-        events.detect {|regexp,_| message.match(regexp)}
-      end
-    end
 
     # Invoke a callback
     # this is really quite cunning

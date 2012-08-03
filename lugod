@@ -1,9 +1,5 @@
 #!/usr/bin/env ruby
 
-# FIXME: this should be in services/wolfram
-require 'wolfram'
-require 'sqlite3'
-
 require 'rubygems'
 if not require 'bundler/setup' then
   $stderr.puts "Please install the bundler gem to proceed."
@@ -31,7 +27,7 @@ MIN_RECONNECT_RATE = 60
 BOT_DC_TIMEOUT = 5
 
 # The logging level to use when loading log configs
-BOOTSTRAP_LOG_LEVEL = Logger::DEBUG
+BOOTSTRAP_LOG_LEVEL = Logger::INFO
 
 
 # =====================
@@ -124,6 +120,14 @@ config[:hooks][:objs].each{|h|
   # Create the hook object with a reference to the bot
   $log.info "Registering #{h}..."
   hook_config   = PersistentHash.new( File.join(config[:hooks][:config_dir], "#{h}.yml"), true ) 
+   
+  # Load required gems
+  if(hook_config[:gems].is_a? Array) then
+    hook_config[:gems].each{|gem|
+      require gem
+    }
+  end
+
   hook          = eval("#{h}.new(bot, hook_config)")
   hook.hook_thyself
 

@@ -37,16 +37,10 @@ class Echo < HookService
     # 0) A simple hook to respond to everything
     #
     # This hook will respond to everythin in the channel
-    @bot.register_hook(self,                          # We own the hook, meaning it will be auto-unhooked when we close
-                                                      # This also lets us unhook ALL at once with @bot,unregister_all_hooks
-
-                       :channel,                      # respond to all channel messages.  This includes many classes of message
-                                                      # so the chances are you want to filter based on type
-
+    @bot.register_hook(
                        :echo_chan,                    # Call this hook echo_chan, so we can remove it individually later
-
-                       nil                            # We wish to respond to every message, don't provide a trigger
-                                                      # this will default to lambda{|*| return true}
+                       nil,
+                       :channel
                       ){                              # The block to call
 
                         me.echo_to_channel(nick, message)
@@ -54,7 +48,7 @@ class Echo < HookService
                           } 
 
     # Same, but echoes to stdout 
-    @bot.register_hook(self, :channel, :echo_stdout){
+    @bot.register_hook(:echo_stdout){
       me.echo_to_stdout(nick, message)
     }
 
@@ -65,26 +59,26 @@ class Echo < HookService
     # Trigger expressions get the same arguments as ordinary hooks, and must make up their mind that way :-)
     #  - return false/nil to avoid handling, or
     #  - return any object to accept and trigger the handler.
-    @bot.register_hook(self, :channel, :echo_triggered,
+    @bot.register_hook(:echo_triggered,
                         lambda{|nick, message, raw_msg|     # This is the trigger expression,
                           return (message =~ /echo/)        # It is optional for all non-command hooks,
-    }){                            # In this case, we just return true if the user types "echo"
+   }){                            # In this case, we just return true if the user types "echo"
                         me.echo_to_channel nick, message
                       }
-#
-#    # -------------------------------------------------------------------------------------------------------
-#    # 3) A command hook.
-#    #
-#    # This hooks a command.
-#    # Command hooks do not carry a trigger expression, but a simple regex object
-#    # 
-#    # Commands are called natively (see example above), and arguments are parsed in line with Bash's
-#    # shellword system, ie 
-#    # "one argument" 
-#    # one\ argument 
-#    # two arguments
+
+    # -------------------------------------------------------------------------------------------------------
+    # 3) A command hook.
+    #
+    # This hooks a command.
+    # Command hooks do not carry a trigger expression, but a simple regex object
+    # 
+    # Commands are called natively (see example above), and arguments are parsed in line with Bash's
+    # shellword system, ie 
+    # "one argument" 
+    # one\ argument 
+    # two arguments
    
-    @bot.register_hook(self, :cmd_channel, :echo_cmd, /[Ee]cho/){|*args|
+    @bot.register_command(:echo_cmd, /[Ee]cho/, :channel){|*args|
       me.echo_cmd args.join(" ")
     }
   end
