@@ -22,6 +22,7 @@ class Robot9KService < HookService
     res   = @db.select @config[:table], [@config[:field]], "#{@config[:field]}=#{@db.escape(hash)}"
     if res.length > 0 then
       @bans[nick] -= 1
+      @bot.say "Stop repeating things, #{nick}!" if @bans[nick] <= 1 and @bans[nick] > 0 
     else
       @bans[nick] = [@bans[nick] + @config[:recovery_rate], @config[:max_recovery]].min
     end
@@ -30,8 +31,6 @@ class Robot9KService < HookService
     if @bans[nick] < 0 then
       @bot.kick(nick, @config[:reason] % @bans[nick].round(2))
       @bans[nick] = 0
-    elsif @bans[nick] <= 1 then
-      @bot.say "Stop repeating things, #{nick}!"
     end
 
     # Save the bans list
@@ -46,7 +45,7 @@ class Robot9KService < HookService
     @bot.say "Score for #{nick}: #{(@bans[nick] ||= @config[:warnings]).round(2)}" #<= #{@config[:max_recovery]} += #{RECOVERY_RATE}"
   end
   
-
+  # 
   def hook_thyself
     me = self
     @bot.register_hook(self, :channel, :r9k){
