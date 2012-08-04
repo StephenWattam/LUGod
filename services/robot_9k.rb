@@ -15,7 +15,7 @@ class Robot9KService < HookService
   # check something against the db
   def check(nick, message)
     # hash the message
-    hash  = Digest::MD5.hexdigest("#{message.strip}")
+    hash  = Digest::MD5.hexdigest("#{message.strip.downcase}")
   
     # Check the scores
     @bans[nick] ||= @config[:warnings]
