@@ -76,5 +76,9 @@ class WolframService < HookService
     }
   end
 
+  def unhook_thyself
+    @bot.unregister_hooks(:channel => :ask, :private => :ask)
+  end
+
 end
 

@@ -58,6 +58,10 @@ class TitleService < HookService
                       }
   end
 
+  def unhook_thyself
+    @bot.unregister_hooks(:channel => :titlefinder)
+  end
+
 private
   def get_title(uri)
     $log.debug "Looking up URI: #{uri}"

@@ -34,5 +34,8 @@ class SpellService < HookService
     }
   end
 
+  def unhook_thyself
+    @bot.unregister_hooks(:channel => :spell)
+  end
 end
 

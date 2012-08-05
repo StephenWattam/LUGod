@@ -54,14 +54,18 @@ class Robot9KService < HookService
       me.check(nick, message)
     }
     
-    @bot.register_command(:r9k, /r9k/, :channel){|user = nil|
+    @bot.register_command(:r9k_cmd, /r9k/, :channel){|user = nil|
       me.report( user || nick )
     }
   end
 
   # close the db
   def unhook_thyself
-    super
+    @bot.unregister_hooks(:channel => [:r9k, :r9k_cmd])
+  end
+
+  # Close the db
+  def close
     @db.close
   end
 

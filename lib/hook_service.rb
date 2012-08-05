@@ -11,6 +11,10 @@ class HookService
   def unhook_thyself
   end
 
+  def close
+    unhook_thyself
+  end
+
   # pullup and define hooks
   def hook_thyself
   end

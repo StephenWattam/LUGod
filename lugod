@@ -29,23 +29,25 @@ BOT_DC_TIMEOUT = 5
 # The logging level to use when loading log configs
 BOOTSTRAP_LOG_LEVEL = Logger::INFO
 
+CONFIG_FILE = "config/config.yml"
 
 # =====================
 # Load into a persistent object so we can save later
-config_file   = ARGV[0] || "config/config.yml"
-config        = PersistentHash.new(config_file, true)
+environment   = ARGV[0] 
+config        = PersistentHash.new(CONFIG_FILE, true)
 $log          = MultiOutputLogger.new({:level => BOOTSTRAP_LOG_LEVEL}, config[:logging][:progname])
 
 # =====================
 # Configure environment system
 #
-if(config[:environment])
-  if not config[:modes][config[:environment]].is_a? Hash then
-    $log.fatal "Invalid environment: #{config[:environment]}!"
+if(environment)
+  environment = environment.to_sym
+  if not config[:environments][environment].is_a? Hash then
+    $log.fatal "Invalid environment: #{environment}!"
     exit(1)
   end
 
-  $log.info "Starting in #{config[:environment]} mode..."
+  $log.info "Starting in #{environment} mode..."
   overrides = 0
   recursive_merge = lambda{|default, override|
       # if the thing to override is not a hash, don't probe further
@@ -65,7 +67,7 @@ if(config[:environment])
     }
 
   # Merge configs
-  config = recursive_merge.call(config, config[:modes][config[:environment]])
+  config = recursive_merge.call(config, config[:environments][environment])
   $log.info "Done (changed #{overrides} configs)."
 end
 
@@ -114,7 +116,8 @@ Dir.glob(File.join(File.dirname(__FILE__), config[:hooks][:dir], "*.rb")).each{|
 
 # ----------------------------------------
 # Instantiate the bot
-bot = HookBot.new(config[:irc])
+bot       = HookBot.new(config[:irc])
+services  = []
 config[:hooks][:objs].each{|h|
   
   # Create the hook object with a reference to the bot
@@ -130,6 +133,7 @@ config[:hooks][:objs].each{|h|
 
   hook          = eval("#{h}.new(bot, hook_config)")
   hook.hook_thyself
+  services << hook
 
   # Check it makes sense to use callbacks on it
   raise "Hook #{h} is not a subclass of HookService!" if not hook.is_a? HookService
@@ -156,6 +160,16 @@ begin
 rescue SignalException => Se
   $log.fatal "Caught signal!"
   if defined? bot and bot.connected? then
+
+    # Close all services once and for all.
+    $log.fatal "Closing services..."
+    services.each{|s|
+      $log.fatal "Unhooking and closing #{s.class}..."
+      s.unhook_thyself
+      s.close
+    }
+   
+    # Then d/c bot
     $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s)"
     begin
       Timeout::timeout(BOT_DC_TIMEOUT){
@@ -166,5 +180,4 @@ rescue SignalException => Se
     $log.fatal "Done."
   end
 end
-
 

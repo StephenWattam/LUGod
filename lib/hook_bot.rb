@@ -66,8 +66,13 @@ class HookBot
   end
 
   # Remove hook by name
-  def unregister_hook(name)
-    @hooks[type.to_sym].delete name
+  def unregister_hooks(typenames)
+    typenames.each{|type, names|
+      names = [names] if not names.is_a? Array
+      names.each{|name|
+        @hooks[type.to_sym].delete(name) 
+      }
+    }
   end
 
   # Configure the bot

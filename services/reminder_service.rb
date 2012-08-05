@@ -59,6 +59,15 @@ class ReminderService < HookService
     }
   end
 
+  def unhook_thyself
+    @bot.unregister_hooks(:channel => [:tell, :tell_cmd, :tell_override_cmd], 
+                          :private => [:tell, :tell_cmd, :tell_override_cmd])
+  end
+
+  def close
+    @reminders.save(true)
+  end
+
 private
   def add_reminder(from, user, override, message)
     # pre-parse
