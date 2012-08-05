@@ -24,14 +24,15 @@ class Robot9KService < HookService
     res   = @db.select @config[:table], [@config[:field]], "#{@config[:field]}=#{@db.escape(hash)}"
     if res.length > 0 then
       @bans[nick] -= 1
-      @bot.say "Stop repeating things, #{nick}!" if @bans[nick] <= 1 and @bans[nick] > 0 
+      #@bot.say "Stop repeating things, #{nick}!" if @bans[nick] <= 1 and @bans[nick] > 0 
     else
       @bans[nick] = [@bans[nick] + @config[:recovery_rate], @config[:max_recovery]].min
     end
 
     # kick the user if they violate the level
     if @bans[nick] < 0 then
-      @bot.kick(nick, @config[:reason] % @bans[nick].round(2))
+      @bot.say "Stop repeating things, #{nick}!" if @bans[nick] <= 1 and @bans[nick] > 0 
+      #@bot.kick(nick, @config[:reason] % @bans[nick].round(2))
       @bans[nick] = 0
     end
 
