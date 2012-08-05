@@ -183,7 +183,7 @@ private
 
       begin
         if(trigger.call(nick, message, raw_msg)) then
-          $log.debug "Dispatching hook for '#{message}'..."
+          $log.debug "Dispatching hook '#{name}'..."
           invoke({:nick => nick, :message => message, :raw_msg => raw_msg}, p)
           $log.debug "Finished."
         end

@@ -1,0 +1,12 @@
+--- 
+# Storage config
+:database_path:  "data/logs.db"
+:pragma:
+  #"locking_mode": "EXCLUSIVE"
+  "cache_size": 20000
+  "synchronous": 0
+  "temp_store": 2
+:server: "freenode"
+:verbose: true 
+
+
