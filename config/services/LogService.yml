@@ -8,5 +8,5 @@
   "temp_store": 2
 :server: "freenode"
 :verbose: true 
-
+:max_results: 3
 

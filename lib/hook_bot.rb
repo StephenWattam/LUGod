@@ -148,6 +148,10 @@ class HookBot
     @bot.kick @config[:channel], nick, reason
   end
 
+  def nick
+    @config[:nick]
+  end
+
   def connected?
     @bot.connected?
   end
@@ -169,6 +173,10 @@ class HookBot
     
     # Quit
     @bot.quit reason
+  end
+
+  def channel
+    @config[:channel]
   end
 
 private

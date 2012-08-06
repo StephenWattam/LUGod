@@ -20,6 +20,7 @@
     - ReminderService 
     - WolframService 
     - Robot9KService 
+    - LogService
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
   :logs:                                # A list of places to log to
@@ -41,7 +42,7 @@
       :verbose: false                  # Enable/disable bot level logging
     :hooks:
       :objs:
-        - Echo
+        #- Echo
         - LogService
     :logging:
       :logs:
