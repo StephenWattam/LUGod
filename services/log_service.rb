@@ -41,7 +41,9 @@ CREATE TABLE "messages" (
       when :seen
         seen(nick, args[0])
       when :count
-        search(args[0], args[1])
+        count(args[0], args[1])
+      when :fight
+        fight(args)
       when :search
         search(args[0], args[1])
       when :help
@@ -53,12 +55,41 @@ CREATE TABLE "messages" (
 
   # output help
   def print_help
-    @bot.say("Commands: help, seen NICK, search [TERM] [NICK], count [TERM] [NICK]")
+    @bot.say("Commands: help, seen NICK, search [TERM] [NICK], count [TERM] [NICK], fight TERM TERM")
   end
 
   def count(what, who)
     @bot.say "I found #{perform_count(what, who)} occurrences in the logs." 
   end
+
+
+  def fight(items)
+    if items.length < 2
+      @bot.say "Nothing to fight!" 
+      return
+    end
+
+    # Ensure they are wildcarded
+    items_escaped = []
+    items.each{|x|
+      items_escaped << ((x.index('*')) ? x : "*#{x}*")
+    }
+
+    # Perform count    
+    counts        = []
+    items_escaped.each{|x|
+      counts << perform_count(x)
+    }
+
+    # Check for a draw
+    if counts.inject(counts[0]){|same, x| x && x == same ? x : nil } then
+      @bot.say "Draw! #{(items.length == 2)?'Both' : 'All'} items had #{counts[0]} occurrence#{(counts[0] == 1)?'':'s'}."
+    else
+      # Return results
+      @bot.say "#{items[counts.index(counts.max)]} wins (#{counts.join(", ")})"
+    end
+  end
+
 
   def search(what, who)
     rs, num = perform_search(what, who)
@@ -68,7 +99,7 @@ CREATE TABLE "messages" (
       i     = 0
       rs.each{|msginfo|
         time, nick, message = msginfo
-        @bot.say "#{i+=1}/#{num} -- [#{Time.at(time).strftime("%d/%m/%y %H:%M")}] <#{nick}> #{message}"
+        @bot.say "#{num - (i+=1)}/#{num} -- [#{Time.at(time).strftime("%d/%m/%y %H:%M")}] <#{nick}> #{message}"
       }
     else
       @bot.say "No results!"
@@ -123,6 +154,9 @@ CREATE TABLE "messages" (
     @bot.register_command(:log_count, /count/, [:channel, :private]){|what = "*", who = "*"|
       me.count(what, who)
     }
+    @bot.register_command(:log_fight, /fight/, :channel){|*whats|
+      me.fight(whats)
+    }
 
     # Ordinary channel messages
     @bot.register_hook(:log_listener, nil, :channel){
@@ -146,7 +180,7 @@ CREATE TABLE "messages" (
 
   def unhook_thyself
     # TODO
-    @bot.unregister_hooks(:channel => [:log_listener, :log_cmd, :log_seen, :log_hist, :log_count],
+    @bot.unregister_hooks(:channel => [:log_listener, :log_cmd, :log_seen, :log_hist, :log_count, :log_fight],
                           :private => [:log_listener_private, :log_cmd, :log_seen, :log_hist, :log_count])
   end
   
@@ -302,7 +336,7 @@ private
       start_transaction if trans
       end_transaction if @transaction and not trans 
 
-      puts "DEBUG: #{sql}"
+      #puts "DEBUG: #{sql}"
 
       # run the query
       #puts "<#{sql.split()[0]}, #{trans}, #{@transaction}>"

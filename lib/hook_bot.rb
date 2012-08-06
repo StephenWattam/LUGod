@@ -42,7 +42,7 @@ class HookBot
       # then register
       @cmds[type][name] = {:trigger => trigger, :proc => p}
     }
-    $log.info "Registered command '#{name}' for trigger #{trigger} (listening to #{types.length} types)"
+    $log.info "Registered command '#{name}' for #{types.length} type[s]"
   end
 
   # Register a hook to be run on any message

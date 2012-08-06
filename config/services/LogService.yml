@@ -7,6 +7,6 @@
   "synchronous": 0
   "temp_store": 2
 :server: "freenode"
-:verbose: true 
+:verbose: false 
 :max_results: 3
 
