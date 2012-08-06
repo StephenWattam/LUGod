@@ -134,7 +134,7 @@ class HookBot
   end
 
   def dispatch(type, nick, message, raw_msg)
-    $log.debug "Received a message of type #{type}: #{message}"
+    $log.debug "Received a message of type #{type}"
     if(message =~ COMMAND_RX) then
       dispatch_command(nick, message, raw_msg, @cmds[type])
     else

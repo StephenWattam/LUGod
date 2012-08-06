@@ -40,6 +40,8 @@ CREATE TABLE "messages" (
     case command
       when :seen
         seen(nick, args[0])
+      when :count
+        search(args[0], args[1])
       when :search
         search(args[0], args[1])
       when :help
@@ -51,46 +53,28 @@ CREATE TABLE "messages" (
 
   # output help
   def print_help
-    @bot.say("Commands: help, seen NICK, search [TERM] [NICK]")
+    @bot.say("Commands: help, seen NICK, search [TERM] [NICK], count [TERM] [NICK]")
   end
-#fnidngfio
-  def search(what, who="*")
-    # Get a count of everything
-    rs = @db.select("messages", "count(*)", 
-                    "`server` == #{@db.escape(@config[:server])} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)")
-    num = rs.flatten[0].to_i
 
-    # Quit if we didn't find anything
-    if num == 0 then
-      @bot.say "No results found."
-      return
-    end
-
-
-    # Then select actual data
-    rs = @db.select("messages", 
-                    ["`time`", "`from`", "`message`"], 
-                    "`server` == #{@db.escape(@config[:server])} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)", "order by `time` desc limit #{@config[:max_results]};");
-
-    #puts "==>"
-    #puts rs.to_s
-    #puts "<=="
-
-    # Double-check
-    if rs.length == 0 then
-      @bot.say "No results found."
-      return
-    end
-
-    # Then output
-    count = rs.length
-    i     = 0
-    rs.each{|msginfo|
-      time, nick, message = msginfo
-      @bot.say "#{i+=1}/#{num} -- [#{Time.at(time).strftime("%d/%m/%y %H:%M")}] <#{nick}> #{message}"
-    }
-
+  def count(what, who)
+    @bot.say "I found #{perform_count(what, who)} occurrences in the logs." 
   end
+
+  def search(what, who)
+    rs, num = perform_search(what, who)
+
+    if rs.length > 0 then 
+      # Then output
+      i     = 0
+      rs.each{|msginfo|
+        time, nick, message = msginfo
+        @bot.say "#{i+=1}/#{num} -- [#{Time.at(time).strftime("%d/%m/%y %H:%M")}] <#{nick}> #{message}"
+      }
+    else
+      @bot.say "No results!"
+    end
+  end
+
 
   # Output last datetime a user was seen
   def seen(nick, who)
@@ -130,11 +114,14 @@ CREATE TABLE "messages" (
     @bot.register_command(:log_cmd, /log/, [:channel, :private]){|cmd = :help, *args|
       me.report(nick, cmd.downcase.to_sym, args)
     }
-    @bot.register_command(:log_seen, /seen/, [:channel, :private]){|who = nil|
+    @bot.register_command(:log_seen, /seen/, [:channel, :private]){|who = "*"|
       me.seen(nick, who)
     }
     @bot.register_command(:log_hist, /search/, [:channel, :private]){|what = "*", who = "*"|
       me.search(what, who)
+    }
+    @bot.register_command(:log_count, /count/, [:channel, :private]){|what = "*", who = "*"|
+      me.count(what, who)
     }
 
     # Ordinary channel messages
@@ -159,8 +146,8 @@ CREATE TABLE "messages" (
 
   def unhook_thyself
     # TODO
-    @bot.unregister_hooks(:channel => [:log_listener, :log_cmd, :log_seen, :log_hist],
-                          :private => [:log_listener_private, :log_cmd, :log_seen, :log_hist])
+    @bot.unregister_hooks(:channel => [:log_listener, :log_cmd, :log_seen, :log_hist, :log_count],
+                          :private => [:log_listener_private, :log_cmd, :log_seen, :log_hist, :log_count])
   end
   
   # Close the db
@@ -194,6 +181,36 @@ CREATE TABLE "messages" (
         "server"  => server }
         )
 
+  end
+
+private
+
+  def perform_count(what, who="*")
+    # Get a count of everything
+    rs = @db.select("messages", "count(*)", 
+                    "`server` == #{@db.escape(@config[:server])} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)")
+
+    return rs.flatten[0].to_i
+  end
+
+
+  def perform_search(what, who="*")
+    # Quit if we didn't find anything
+    num = perform_count(what, who)
+    return [], 0 if num == 0 
+
+
+    # Then select actual data
+    rs = @db.select("messages", 
+                    ["`time`", "`from`", "`message`"], 
+                    "`server` == #{@db.escape(@config[:server])} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)", "order by `time` desc limit #{@config[:max_results]};");
+
+    #puts "==>"
+    #puts rs.to_s
+    #puts "<=="
+
+    # Double-check
+    return rs, num
   end
 
 
@@ -285,7 +302,7 @@ CREATE TABLE "messages" (
       start_transaction if trans
       end_transaction if @transaction and not trans 
 
-      #puts "DEBUG: #{sql}"
+      puts "DEBUG: #{sql}"
 
       # run the query
       #puts "<#{sql.split()[0]}, #{trans}, #{@transaction}>"
