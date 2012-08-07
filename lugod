@@ -1,6 +1,11 @@
 #!/usr/bin/env ruby
 
 require 'rubygems'
+if RUBY_VERSION < "1.9.3" then
+  $stderr.puts "This bot requires ruby >= 1.9.3"
+  exit(1)
+end
+
 if not require 'bundler/setup' then
   $stderr.puts "Please install the bundler gem to proceed."
   exit(1)
@@ -36,6 +41,7 @@ CONFIG_FILE = "config/config.yml"
 environment   = ARGV[0] 
 config        = PersistentHash.new(CONFIG_FILE, true)
 $log          = MultiOutputLogger.new({:level => BOOTSTRAP_LOG_LEVEL}, config[:logging][:progname])
+
 
 # =====================
 # Configure environment system
@@ -142,6 +148,13 @@ config[:hooks][:objs].each{|h|
 
 # -----------------------------------------------------------------------------------
 # Start execution proper
+# Daemonize if we want to
+if config[:daemonise] then
+  $log.info "Forking to background..."
+  Process.daemon(true)
+end
+
+# Then connect
 begin
 
   # Continually connect and run
@@ -181,3 +194,5 @@ rescue SignalException => Se
   end
 end
 
+$log.info "Goodbye!"
+exit(0)
