@@ -99,7 +99,8 @@ CREATE TABLE "messages" (
       i     = 0
       rs.each{|msginfo|
         time, nick, message = msginfo
-        @bot.say "#{num - (i+=1)}/#{num} -- [#{Time.at(time).strftime("%d/%m/%y %H:%M")}] <#{nick}> #{message}"
+        @bot.say "#{num - i}/#{num} -- [#{Time.at(time).strftime("%d/%m/%y %H:%M")}] <#{nick}> #{message}"
+        i += 1
       }
     else
       @bot.say "No results!"
