@@ -20,37 +20,18 @@ CREATE TABLE "messages" (
   def initialize(bot, config)
     super(bot, config)
 
-    $log.info "Database for log doesn't exist.  Creating at #{@config[:database_path]}..."
     # Create the db if not already created
     if not File.exist?(@config[:database_path]) then
+      $log.info "Database for log doesn't exist.  Creating at #{@config[:database_path]}..."
       SQLite3::Database.new(@config[:database_path]) do |db|
         db.execute(SCHEMA)
       end
+      $log.info "Database successfully created!"
     end
-    $log.info "Database successfully created!"
 
     # Open the db
     $log.debug "Opening log database at #{@config[:database_path]}..."
-    @db   = DatabaseConnection.new(@config[:database_path], 100, @config[:pragma])
-  end
-
-
-  # Add the ability to search, count, !seen, etc
-  def report(nick, command, args)
-    case command
-      when :seen
-        seen(nick, args[0])
-      when :count
-        count(args[0], args[1])
-      when :fight
-        fight(args)
-      when :search
-        search(args[0], args[1])
-      when :help
-        print_help
-      else
-        print_help
-    end
+    @db = DatabaseConnection.new(@config[:database_path], 100, @config[:pragma])
   end
 
   # output help
@@ -125,7 +106,7 @@ CREATE TABLE "messages" (
     end
 
     # Read from the DB
-    rs = @db.select("messages", "`time`", "`from`=#{@db.escape(who)} AND `to` == #{@db.escape(@bot.channel)} AND `server` == #{@db.escape(@config[:server])}", "order by `time` desc limit 1;")
+    rs = @db.select("messages", "`time`", "`from`=#{@db.escape(who)} AND `to` == #{@db.escape(@bot.channel)} AND `server` == #{@db.escape(@bot.server)}", "order by `time` desc limit 1;")
 
     # Then output handy stuff.
     if rs.length == 0 then
@@ -142,9 +123,6 @@ CREATE TABLE "messages" (
     me      = self
     # TODO: Hook *everything*
 
-    @bot.register_command(:log_cmd, /log/, [/channel/, /private/]){|cmd = :help, *args|
-      me.report(nick, cmd.downcase.to_sym, args)
-    }
     @bot.register_command(:log_seen, /seen/, [/channel/, /private/]){|who = "*"|
       me.seen(nick, who)
     }
@@ -180,7 +158,7 @@ CREATE TABLE "messages" (
 
   def unhook_thyself
     # TODO
-    @bot.unregister_hooks(:log_listener, :log_cmd, :log_seen, :log_hist, :log_count, :log_fight, :log_listener_private)
+    @bot.unregister_hooks(:log_listener, :log_seen, :log_hist, :log_count, :log_fight, :log_listener_private)
   end
   
   # Close the db
@@ -221,7 +199,7 @@ private
   def perform_count(what, who="*")
     # Get a count of everything
     rs = @db.select("messages", "count(*)", 
-                    "`server` == #{@db.escape(@config[:server])} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)")
+                    "`server` == #{@db.escape(@bot.server)} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)")
 
     return rs.flatten[0].to_i
   end
@@ -236,7 +214,7 @@ private
     # Then select actual data
     rs = @db.select("messages", 
                     ["`time`", "`from`", "`message`"], 
-                    "`server` == #{@db.escape(@config[:server])} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)", "order by `time` desc limit #{@config[:max_results]};");
+                    "`server` == #{@db.escape(@bot.server)} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)", "order by `time` desc limit #{@config[:max_results]};");
 
     #puts "==>"
     #puts rs.to_s
@@ -335,7 +313,7 @@ private
       start_transaction if trans
       end_transaction if @transaction and not trans 
 
-      #puts "DEBUG: #{sql}"
+      # $log.debug "LOG-SQL: #{sql}"# if @config[:verbose]
 
       # run the query
       #puts "<#{sql.split()[0]}, #{trans}, #{@transaction}>"

@@ -48,7 +48,7 @@
         - SpellService
         - ReminderService 
         - WolframService 
-        #- LogService
+        - LogService
     :logging:
       :logs:
         :default:

@@ -145,6 +145,10 @@ class HookBot
     @bot.kick @config[:channel], nick, reason
   end
 
+  def server
+    @bot.server
+  end
+
   def nick
     @config[:nick]
   end
