@@ -40,7 +40,7 @@ class HookBot
     @cmds[name] ||= {}
     # then register
     @cmds[name] = {:types => types, :trigger => trigger, :proc => p}
-    $log.info "Registered command '#{name}'"
+    $log.debug "Registered command '#{name}'"
   end
 
   # Register a hook to be run on any message
@@ -60,7 +60,7 @@ class HookBot
     # register
     @hooks[name] = {:types => types, :trigger => trigger, :proc => p}
 
-    $log.info "Registered hook '#{name}'"
+    $log.debug "Registered hook '#{name}'"
   end
 
   # Remove hook by name

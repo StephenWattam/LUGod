@@ -20,7 +20,6 @@
     - SpellService
     - ReminderService 
     - WolframService 
-    - Robot9KService 
     - LogService
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
@@ -45,6 +44,10 @@
     :hooks:
       :objs:
         - Echo
+        - TitleService
+        - SpellService
+        - ReminderService 
+        - WolframService 
         #- LogService
     :logging:
       :logs:

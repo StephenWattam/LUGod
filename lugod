@@ -50,6 +50,7 @@ if(environment)
   environment = environment.to_sym
   if not config[:environments][environment].is_a? Hash then
     $log.fatal "Invalid environment: #{environment}!"
+    $log.info "Available environments: #{config[:environments].keys.join(", ")}"
     exit(1)
   end
 
@@ -112,12 +113,28 @@ $log.debug "Installing signal handlers."
 
 # ----------------------------------------
 # Constuct hooks
+def camel_to_underscore(str)
+  # First, isolate numbers, then break by case, then merge double-underscores again
+  return str.gsub(/([0-9]+)/, '_\1_').gsub(/([A-Z0-9]+[a-z])/, '_\1\2').gsub('__', '_').gsub(/^_/, '').downcase
+end
 
 # Ensure our namespace covers the hooks dir
-Dir.glob(File.join(File.dirname(__FILE__), config[:hooks][:dir], "*.rb")).each{|x| 
-  load x
-}
+config[:hooks][:objs].each{|h|
+  # Construct path from class name
+  file = camel_to_underscore(h) + ".rb"
+  path = File.join(config[:hooks][:dir], file)
+  $log.info "Loading service #{h} from #{file}..."
 
+  # Check the file exists for the user
+  if not File.exist?(path) then
+    $log.fatal "No file found for module: #{h}"
+    $log.fatal "Please check #{path} exists."
+    exit(1)
+  end
+
+  # Load file
+  load path
+}
 
 
 # ----------------------------------------
@@ -127,7 +144,7 @@ services  = []
 config[:hooks][:objs].each{|h|
   
   # Create the hook object with a reference to the bot
-  $log.info "Registering #{h}..."
+  $log.info "Registering hooks for #{h}..."
   hook_config   = PersistentHash.new( File.join(config[:hooks][:config_dir], "#{h}.yml"), true ) 
    
   # Load required gems
