@@ -195,7 +195,7 @@ private
             if(trigger.call(nick, message, raw_msg)) then
               # Then invoke
               $log.debug "Dispatching hook '#{name}'..."
-              invoke({:nick => nick, :message => message, :raw_msg => raw_msg}, p)
+              invoke(prepare_vars(raw_msg, name), p)
               $log.debug "Finished."
             end
           rescue Exception => e
@@ -244,7 +244,7 @@ private
             begin
               $log.debug "Arity of block: #{p.arity}, args: #{args.length}"
               $log.debug "Dispatching command hook #{name} for #{cmd}..."
-              invoke({:nick => nick, :message => message, :raw_msg => raw_msg}, p, args)
+              invoke(prepare_vars(raw_msg, name), p, args)
             rescue Exception => e
               say("Error in #{name}: #{e}")
               $log.error "Error in callback for command: #{cmd} => #{e}"
@@ -254,6 +254,24 @@ private
 
         end
       }
+    }
+  end
+
+  # Prepare values for callbacks
+  # This defines what variables callbacks can access
+  # without calling a method
+  def prepare_vars(raw_msg, name)
+    {:nick          => raw_msg.nick,
+     :message       => raw_msg.message,
+     :user          => raw_msg.user,
+     :host          => raw_msg.host,
+     :channel       => raw_msg.channel,
+     :error         => raw_msg.error,
+     :raw_msg       => raw_msg,
+     :callback_name => name,
+     :server        => @bot.server,
+     :bot_nick      => @bot.nick,
+     :bot           => self
     }
   end
 

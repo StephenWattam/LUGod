@@ -8,7 +8,7 @@ module Isaac
 
   class Bot
     # Access config properties
-    attr_accessor :config, :irc, :nick, :channel, :message, :user, :host, :match, :error, :raw_msg, :log, :type
+    attr_accessor :config, :irc, :nick, :channel, :message, :user, :host, :match, :error, :raw_msg, :log, :type, :server
 
     # Initialise with a block for caling :on, etc
     def initialize(&b)
@@ -20,6 +20,11 @@ module Isaac
     # Convenience 
     def log
       @config.log
+    end
+
+    # Server
+    def server
+      @config.server
     end
 
     # Is the bot currently connected?

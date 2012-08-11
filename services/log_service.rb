@@ -140,7 +140,6 @@ CREATE TABLE "messages" (
   # Hook the bot
   def hook_thyself
     me      = self
-    conf    = @config
     # TODO: Hook *everything*
 
     @bot.register_command(:log_cmd, /log/, [/channel/, /private/]){|cmd = :help, *args|
@@ -165,7 +164,7 @@ CREATE TABLE "messages" (
       to    = m.channel
       from  = nick
     
-      me.add_to_log(m.command, to, from, m.host, m.message, m.raw, conf[:server])
+      me.add_to_log(m.command, to, from, m.host, m.message, m.raw, server)
     }
 
     # private messages
@@ -174,7 +173,7 @@ CREATE TABLE "messages" (
       to    = m.params[0] || "unknown"
       from  = nick
     
-      me.add_to_log(m.command, to, from, m.host, m.message, m.raw, conf[:server])
+      me.add_to_log(m.command, to, from, m.host, m.message, m.raw, server)
     }
   end
 

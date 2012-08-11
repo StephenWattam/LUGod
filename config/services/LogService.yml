@@ -6,7 +6,6 @@
   "cache_size": 20000
   "synchronous": 0
   "temp_store": 2
-:server: "freenode"
 :verbose: false 
 :max_results: 3
 
