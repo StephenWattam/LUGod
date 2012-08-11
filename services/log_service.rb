@@ -1,5 +1,5 @@
 
-
+require 'sqlite3'
 
 class LogService < HookService
 
