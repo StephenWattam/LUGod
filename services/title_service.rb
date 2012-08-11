@@ -53,13 +53,13 @@ class TitleService < HookService
                         return message =~ URL_RX
                     }
 
-    @bot.register_hook(:titlefinder, trigger, :channel){
+    @bot.register_hook(:titlefinder, trigger, /channel/){
                         me.check_link(message)
                       }
   end
 
   def unhook_thyself
-    @bot.unregister_hooks(:channel => :titlefinder)
+    @bot.unregister_hooks(:titlefinder)
   end
 
 private

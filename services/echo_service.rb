@@ -40,7 +40,7 @@ class Echo < HookService
     @bot.register_hook(
                        :echo_chan,                    # Call this hook echo_chan, so we can remove it individually later
                        nil,
-                       :channel
+                       /channel/
                       ){                              # The block to call
 
                         me.echo_to_channel(nick, message)
@@ -62,7 +62,7 @@ class Echo < HookService
     @bot.register_hook(:echo_triggered,
                         lambda{|nick, message, raw_msg|     # This is the trigger expression,
                           return (message =~ /echo/)        # It is optional for all non-command hooks,
-   }){                            # In this case, we just return true if the user types "echo"
+                             }){                            # In this case, we just return true if the user types "echo"
                         me.echo_to_channel nick, message
                       }
 
@@ -78,7 +78,7 @@ class Echo < HookService
     # one\ argument 
     # two arguments
    
-    @bot.register_command(:echo_cmd, /[Ee]cho/, :channel){|*args|
+    @bot.register_command(:echo_cmd, /[Ee]cho/, /channel/){|*args|
       me.echo_cmd args.join(" ")
     }
   end

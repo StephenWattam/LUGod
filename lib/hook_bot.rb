@@ -21,57 +21,52 @@ class HookBot
 
     # Keep track of hooks and what object owns what
     @hooks          = {}
-    @cmds           = {} 
+    @cmds           = {}
 
     # then configure
     configure
   end
 
   # Register a command, only invoked when COMMAND_RX is triggered.
-  def register_command(name, trigger, types = :channel, &p)
+  def register_command(name, trigger, types = /channel/, &p)
     raise "Please define a block" if not block_given?
+    raise "That command is already hooked." if @cmds[name]
  
 
     types = [types] if not types.is_a? Array
+    types.map!{|x| (x.is_a? Regexp) ? x : Regexp.new(x.to_s)} # convert to rx if not already
 
-    types.each{|type|
-      # Ensure default and check we're not clobbering
-      @cmds[type] ||= {}
-      raise "That command is already hooked." if @cmds[type][name]
-
-      # then register
-      @cmds[type][name] = {:trigger => trigger, :proc => p}
-    }
-    $log.info "Registered command '#{name}' for #{types.length} type[s]"
+    # Ensure default and check we're not clobbering
+    @cmds[name] ||= {}
+    # then register
+    @cmds[name] = {:types => types, :trigger => trigger, :proc => p}
+    $log.info "Registered command '#{name}'"
   end
 
   # Register a hook to be run on any message
-  def register_hook(name, trigger = nil, types = :channel, &p)
+  def register_hook(name, trigger = nil, types = /channel/, &p)
     raise "Please define a block" if not block_given?
     trigger ||= lambda{|*| return true}
     raise "Cannot call the trigger expression (type: #{trigger.class})!  Ensure it responds to call()" if not trigger.respond_to? :call
+    raise "That command is already hooked." if @hooks[name]
    
     # Ensure types is an array
     types = [types] if not types.is_a? Array
+    types.map!{|x| (x.is_a? Regexp) ? x : Regexp.new(x.to_s)} # convert to rx if not already
     
-    types.each{|type|
-      # Ensure defaults 
-      @hooks[type] ||= {}
-      raise "That command is already hooked." if @hooks[type][name]
+    # Ensure defaults 
+    @hooks[name] ||= {}
+    
+    # register
+    @hooks[name] = {:types => types, :trigger => trigger, :proc => p}
 
-      # then register
-      @hooks[type][name] = {:trigger => trigger, :proc => p}
-    }
-    $log.info "Registered hook '#{name}' for #{types.length} type[s]"
+    $log.info "Registered hook '#{name}'"
   end
 
   # Remove hook by name
-  def unregister_hooks(typenames)
-    typenames.each{|type, names|
-      names = [names] if not names.is_a? Array
-      names.each{|name|
-        @hooks[type.to_sym].delete(name) 
-      }
+  def unregister_hooks(*names)
+    names.each{|name|
+      @hooks.delete(name) 
     }
   end
 
@@ -135,10 +130,12 @@ class HookBot
 
   def dispatch(type, nick, message, raw_msg)
     $log.debug "Received a message of type #{type}"
+
+    type = type.to_s
     if(message =~ COMMAND_RX) then
-      dispatch_command(nick, message, raw_msg, @cmds[type])
+      dispatch_command(nick, message, raw_msg, type)
     else
-      dispatch_hooks(nick, message, raw_msg, @hooks[type])
+      dispatch_hooks(nick, message, raw_msg, type)
     end
   end
 
@@ -182,31 +179,40 @@ class HookBot
 private
   
   # Dispatch things to hooks
-  def dispatch_hooks(nick, message, raw_msg, hooks)
-    return if not hooks or hooks.length == 0
+  def dispatch_hooks(nick, message, raw_msg, type)
+    return if @hooks.length == 0
 
-    hooks.each{|name, hook|
-      trigger, p = hook[:trigger], hook[:proc]
-      $log.debug "Inspecting hook '#{name}' [#{trigger.call(nick, message, raw_msg)}]"
+    @hooks.each{|name, hook|
+      types, trigger, p = hook[:types], hook[:trigger], hook[:proc]
 
-      begin
-        if(trigger.call(nick, message, raw_msg)) then
-          $log.debug "Dispatching hook '#{name}'..."
-          invoke({:nick => nick, :message => message, :raw_msg => raw_msg}, p)
-          $log.debug "Finished."
+      # Check types match the rx
+      types.each{|type_trigger|
+        if type_trigger.match(type) then
+
+          $log.debug "Inspecting hook '#{name}' [#{trigger.call(nick, message, raw_msg)}]"
+          begin
+            # Check the hook trigger works if it's of the right type
+            if(trigger.call(nick, message, raw_msg)) then
+              # Then invoke
+              $log.debug "Dispatching hook '#{name}'..."
+              invoke({:nick => nick, :message => message, :raw_msg => raw_msg}, p)
+              $log.debug "Finished."
+            end
+          rescue Exception => e
+            say("Error in #{name}: #{e}")
+            $log.error "Error in callback '#{name}' => #{e}"
+            $log.debug "Backtrace: #{e.backtrace.join("\n")}"
+          end
         end
-      rescue Exception => e
-        say("Error in #{name}: #{e}")
-        $log.error "Error in callback '#{name}' => #{e}"
-        $log.debug "Backtrace: #{e.backtrace.join("\n")}"
-      end
+      }
+
     }
   end
 
 
   # Process commands only.
-  def dispatch_command(nick, message, raw_msg, hooks)
-    return if not hooks or hooks.length == 0
+  def dispatch_command(nick, message, raw_msg, type)
+    return if @cmds.length == 0
 
     # Parse message
     message   =~ COMMAND_RX          
@@ -226,20 +232,28 @@ private
     # Then handle the actual commands
     # similar to dispatch_hooks, perhaps TODO merge, but
     # for now it varies due to the call.
-    hooks.each{|name, hook|
-      trigger, p = hook[:trigger], hook[:proc]
+    @cmds.each{|name, hook|
+      types, trigger, p = hook[:types], hook[:trigger], hook[:proc]
 
-      if(cmd =~ trigger) then
-        begin
-          $log.debug "Arity of block: #{p.arity}, args: #{args.length}"
-          $log.debug "Dispatching command hook #{name} for #{cmd}..."
-          invoke({:nick => nick, :message => message, :raw_msg => raw_msg}, p, args)
-        rescue Exception => e
-          say("Error in #{name}: #{e}")
-          $log.error "Error in callback for command: #{cmd} => #{e}"
-          $log.debug "Backtrace: #{e.backtrace.join("\n")}"
+      # Check the type of message it's subscribing to
+      types.each{|type_trigger|
+        if type_trigger.match(type) then
+
+          # Then check command trigger
+          if(cmd =~ trigger) then
+            begin
+              $log.debug "Arity of block: #{p.arity}, args: #{args.length}"
+              $log.debug "Dispatching command hook #{name} for #{cmd}..."
+              invoke({:nick => nick, :message => message, :raw_msg => raw_msg}, p, args)
+            rescue Exception => e
+              say("Error in #{name}: #{e}")
+              $log.error "Error in callback for command: #{cmd} => #{e}"
+              $log.debug "Backtrace: #{e.backtrace.join("\n")}"
+            end
+          end
+
         end
-      end
+      }
     }
   end
 

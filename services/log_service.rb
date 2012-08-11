@@ -143,24 +143,24 @@ CREATE TABLE "messages" (
     conf    = @config
     # TODO: Hook *everything*
 
-    @bot.register_command(:log_cmd, /log/, [:channel, :private]){|cmd = :help, *args|
+    @bot.register_command(:log_cmd, /log/, [/channel/, /private/]){|cmd = :help, *args|
       me.report(nick, cmd.downcase.to_sym, args)
     }
-    @bot.register_command(:log_seen, /seen/, [:channel, :private]){|who = "*"|
+    @bot.register_command(:log_seen, /seen/, [/channel/, /private/]){|who = "*"|
       me.seen(nick, who)
     }
-    @bot.register_command(:log_hist, /search/, [:channel, :private]){|what = "*", who = "*"|
+    @bot.register_command(:log_hist, /search/, [/channel/, /private/]){|what = "*", who = "*"|
       me.search(what, who)
     }
-    @bot.register_command(:log_count, /count/, [:channel, :private]){|what = "*", who = "*"|
+    @bot.register_command(:log_count, /count/, [/channel/, /private/]){|what = "*", who = "*"|
       me.count(what, who)
     }
-    @bot.register_command(:log_fight, /fight/, :channel){|*whats|
+    @bot.register_command(:log_fight, /fight/, /channel/){|*whats|
       me.fight(whats)
     }
 
     # Ordinary channel messages
-    @bot.register_hook(:log_listener, nil, :channel){
+    @bot.register_hook(:log_listener, nil, /channel/){
       m     = raw_msg 
       to    = m.channel
       from  = nick
@@ -169,7 +169,7 @@ CREATE TABLE "messages" (
     }
 
     # private messages
-    @bot.register_hook(:log_listener_private, nil, :private){
+    @bot.register_hook(:log_listener_private, nil, /private/){
       m     = raw_msg
       to    = m.params[0] || "unknown"
       from  = nick
@@ -181,8 +181,7 @@ CREATE TABLE "messages" (
 
   def unhook_thyself
     # TODO
-    @bot.unregister_hooks(:channel => [:log_listener, :log_cmd, :log_seen, :log_hist, :log_count, :log_fight],
-                          :private => [:log_listener_private, :log_cmd, :log_seen, :log_hist, :log_count])
+    @bot.unregister_hooks(:log_listener, :log_cmd, :log_seen, :log_hist, :log_count, :log_fight, :log_listener_private)
   end
   
   # Close the db

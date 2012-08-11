@@ -159,7 +159,7 @@ begin
 
   # Continually connect and run
   loop{
-    $log.info "Connecting bot!"
+    $log.info "Connecting bot..."
     bot.run(true, true)
     $log.info "Bot connected --- dropping back to check connection"
 
