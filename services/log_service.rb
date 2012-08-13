@@ -125,21 +125,21 @@ CREATE TABLE "messages" (
     me      = self
     # TODO: Hook *everything*
 
-    @bot.register_command(self, :log_seen, /seen/, [/channel/, /private/]){|who = "*"|
+    register_command(:log_seen, /seen/, [/channel/, /private/]){|who = "*"|
       me.seen(nick, who)
     }
-    @bot.register_command(self, :log_hist, /search/, [/channel/, /private/]){|what = "*", who = "*"|
+    register_command(:log_hist, /search/, [/channel/, /private/]){|what = "*", who = "*"|
       me.search(what, who)
     }
-    @bot.register_command(self, :log_count, /count/, [/channel/, /private/]){|what = "*", who = "*"|
+    register_command(:log_count, /count/, [/channel/, /private/]){|what = "*", who = "*"|
       me.count(what, who)
     }
-    @bot.register_command(self, :log_fight, /fight/, /channel/){|*whats|
+    register_command(:log_fight, /fight/, /channel/){|*whats|
       me.fight(whats)
     }
 
     # Ordinary channel messages
-    @bot.register_hook(self, :log_listener, nil, /channel/){
+    register_hook(:log_listener, nil, /channel/){
       m     = raw_msg 
       to    = m.channel
       from  = nick
@@ -148,7 +148,7 @@ CREATE TABLE "messages" (
     }
 
     # private messages
-    @bot.register_hook(self, :log_listener_private, nil, /private/){
+    register_hook(:log_listener_private, nil, /private/){
       m     = raw_msg
       to    = m.params[0] || "unknown"
       from  = nick
@@ -156,15 +156,10 @@ CREATE TABLE "messages" (
       me.add_to_log(m.command, to, from, m.host, m.message, m.raw, server)
     }
   end
-
-
-  def unhook_thyself
-    # TODO
-    @bot.unregister_hooks(:log_listener, :log_seen, :log_hist, :log_count, :log_fight, :log_listener_private)
-  end
   
   # Close the db
   def close
+    super # unhook the bot
     @db.close
   end
 

@@ -15,7 +15,7 @@
   :dir: services/                       # Where service objects are located
   :config_dir: config/services/         # Where service objects' config files are located
   :objs:                                # A list of service object names (instantiated with eval)
-    #- Echo
+    # - Echo
     - TitleService
     - SpellService
     - ReminderService 
@@ -52,7 +52,7 @@
     :logging:
       :logs:
         :default:
-          :level: :debug
+          :level: :info
         :file_log:
           :level: :debug
   :testing:                               

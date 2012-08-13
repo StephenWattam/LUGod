@@ -39,18 +39,16 @@ class Echo < HookService
     # 0) A simple hook to respond to everything
     #
     # This hook will respond to everythin in the channel
-    @bot.register_hook(self,
+    register_hook(
                        :echo_chan,                    # Call this hook echo_chan, so we can remove it individually later
                        nil,
                        /channel/
                       ){                              # The block to call
-
                         me.echo_to_channel(nick, message)
-
-                          } 
+                      } 
 
     # Same, but echoes to stdout 
-    @bot.register_hook(:echo_stdout){
+    register_hook(:echo_stdout){
       me.echo_to_stdout(nick, message)
     }
 
@@ -61,7 +59,7 @@ class Echo < HookService
     # Trigger expressions get the same arguments as ordinary hooks, and must make up their mind that way :-)
     #  - return false/nil to avoid handling, or
     #  - return any object to accept and trigger the handler.
-    @bot.register_hook(self, :echo_triggered,
+    register_hook(:echo_triggered,
                         lambda{|nick, message, raw_msg|     # This is the trigger expression,
                           return (message =~ /echo/)        # It is optional for all non-command hooks,
                              }){                            # In this case, we just return true if the user types "echo"
@@ -80,7 +78,7 @@ class Echo < HookService
     # one\ argument 
     # two arguments
    
-    @bot.register_command(self,:echo_cmd, /[Ee]cho/, /channel/){|*args|
+    register_command(:echo_cmd, /[Ee]cho/, /channel/){|*args|
       me.echo_cmd args.join(" ")
     }
   end

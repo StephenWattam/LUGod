@@ -54,13 +54,9 @@ class TitleService < HookService
                         return message =~ URL_RX
                     }
 
-    @bot.register_hook(self, :titlefinder, trigger, /channel/){
+    register_hook(:titlefinder, trigger, /channel/){
                         me.check_link(message)
                       }
-  end
-
-  def unhook_thyself
-    @bot.unregister_hooks(:titlefinder)
   end
 
 private
@@ -107,7 +103,7 @@ private
       title.gsub!("\n\r", "")
       title.gsub!(/\s+/, " ")
       title.strip!
-      title = CGIunescapeHTML(title)
+      title = CGI.unescapeHTML(title)
     }
 
     return title

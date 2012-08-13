@@ -17,6 +17,7 @@ class HookBot
     # Keep track of hooks and what object owns what
     @hooks          = {}
     @cmds           = {}
+    @modules        = {}
 
     # then configure
     configure
@@ -26,6 +27,7 @@ class HookBot
   def register_command(mod, name, trigger, types = /channel/, &p)
     raise "Please define a block" if not block_given?
     raise "That command is already hooked." if @cmds[name]
+    raise "The module given is not a module" if not mod.is_a?(HookService)
  
 
     types = [types] if not types.is_a? Array
@@ -35,6 +37,11 @@ class HookBot
     @cmds[name] ||= {}
     # then register
     @cmds[name] = {:types => types, :trigger => trigger, :proc => p, :module => mod}
+
+    # register hook or command for a given module
+    @modules[mod] ||= {:hooks => [], :cmds => []}
+    @modules[mod][:cmds] << name
+
     $log.debug "Registered command '#{name}'"
   end
 
@@ -44,6 +51,7 @@ class HookBot
     trigger ||= lambda{|*| return true}
     raise "Cannot call the trigger expression (type: #{trigger.class})!  Ensure it responds to call()" if not trigger.respond_to? :call
     raise "That command is already hooked." if @hooks[name]
+    raise "The module given is not a module" if not mod.is_a?(HookService)
    
     # Ensure types is an array
     types = [types] if not types.is_a? Array
@@ -54,14 +62,61 @@ class HookBot
     
     # register
     @hooks[name] = {:types => types, :trigger => trigger, :proc => p, :module => mod}
+    
+    # Register a given hook or command for a give module
+    @modules[mod] ||= {:hooks => [], :cmds => []}
+    @modules[mod][:hooks] << name
+
     $log.debug "Registered hook '#{name}'"
   end
 
   # Remove hook by name
   def unregister_hooks(*names)
     names.each{|name|
-      x = @hooks.delete(name)
+      $log.debug "Unregistering hook: #{name}..."
+      hook = @hooks.delete(name)
+
+      mod = hook[:module]
+      @modules[mod][:hooks].delete(name) 
+      cleanup_module(mod)
     }
+  end
+
+  # Remove cmd by name
+  def unregister_commands(*names)
+    names.each{|name|
+      $log.debug "Unregistering command: #{name}..."
+      cmd = @cmds.delete(name)
+   
+      mod = cmd[:module]
+      @modules[mod][:cmds].delete(name) 
+      cleanup_module(mod)
+    }
+  end
+
+  # Unregister everything by a given module
+  def unregister_modules(*mods)
+    mods.each{|mod|
+      raise "no modules registed." if not @modules[mod]
+
+      $log.debug "Unregistering module: #{mod.class}..."
+      unregister_hooks(*@modules[mod][:hooks]) #if @modules[mod]  
+      # At this point @modules[mod] may have been caught in the cleanup system
+      unregister_commands(*@modules[mod][:cmds]) if @modules[mod] 
+    }
+  end
+
+  # Register the module simply by calling hook
+  def register_module(mod)
+    $log.debug "Registering module: #{mod.class}..."
+    mod.hook_thyself
+  end
+  
+  # unregister ALL
+  def unregister_all
+    $log.debug "Unregistering all modules..."
+    # clone to avoid editing whilst iterating
+    unregister_modules(*@modules.keys.clone) 
   end
 
   # Configure the bot
@@ -174,7 +229,12 @@ class HookBot
   end
 
 private
-  
+  # Checks that a module still has some hooks loaded and deletes it from the list if not.
+  def cleanup_module(mod)
+    return if not @modules[mod]
+    @modules.delete(mod) if @modules[mod][:hooks].length == 0 and @modules[mod][:cmds].length == 0
+  end
+
   # Dispatch things to hooks
   def dispatch_hooks(nick, message, raw_msg, type)
     return if @hooks.length == 0
@@ -270,6 +330,7 @@ private
      :bot_nick      => @bot.nick,
      :hooks         => @hooks,
      :cmds          => @cmds,
+     :modules       => @modules,
      :bot_version   => VERSION,
      :bot           => self
     }

@@ -200,12 +200,14 @@ rescue SignalException => Se
   if defined? bot and bot.connected? then
 
     # Close all services once and for all.
-    $log.fatal "Closing services..."
     services.each{|s|
-      $log.fatal "Unhooking and closing #{s.class}..."
-      s.unhook_thyself
+      $log.fatal "Closing Service #{s.class}..."
       s.close
     }
+    
+    # Unhook any that didn't unhook themself
+    $log.fatal "Unhooking remaining services..."
+    bot.unregister_all
    
     # Then d/c bot
     $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s)"
