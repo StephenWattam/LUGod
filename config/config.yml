@@ -21,6 +21,7 @@
     - ReminderService 
     - WolframService 
     - LogService
+    - PingService 
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
   :logs:                                # A list of places to log to
@@ -44,11 +45,7 @@
     :hooks:
       :objs:
         - Echo
-        - TitleService
-        - SpellService
-        - ReminderService 
-        - WolframService 
-        - LogService
+        - PingService
     :logging:
       :logs:
         :default:
