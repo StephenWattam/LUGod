@@ -1,7 +1,9 @@
 
 # Superclass of all hooks
 class HookService
- 
+
+  @version = "0"
+
   def initialize(bot, config)
     @bot    = bot
     @config = config

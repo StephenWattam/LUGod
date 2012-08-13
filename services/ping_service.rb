@@ -3,6 +3,7 @@
 
 class PingService < HookService
 
+  @version = "0.2"
 
   def ping
     @bot.say "Pong."

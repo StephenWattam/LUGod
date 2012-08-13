@@ -32,3 +32,12 @@ This is a bit more fluid.  In general:
   c) Where an expression must be nested, use parentheses only on the inner
      expressions.  Ruby will fail to lex the thing otherwise.
 
+								
+                                String Types
+-------------------------------------------------------------------------------
+Use "double quotes" for strings that must be evaluated (i.e. have #{variables}
+in them.
+
+Use 'single quotes' for string literals.
+
+Use %s{multiline quotes} for code.

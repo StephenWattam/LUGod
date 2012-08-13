@@ -6,6 +6,7 @@ require 'raspell'
 
 class SpellService < HookService
 
+  @version = "0.1"
 
   def initialize(bot, config)
     super(bot, config)

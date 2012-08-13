@@ -22,6 +22,7 @@
     - WolframService 
     - LogService
     - PingService 
+    - InfoService
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
   :logs:                                # A list of places to log to
@@ -42,10 +43,12 @@
       :password:                      # the test nick is not registered
       :channel: ! '#lucs-dev'
       :verbose: false                  # Enable/disable bot level logging
-    :hooks:
-      :objs:
-        - Echo
-        - PingService
+    # :hooks:
+    #   :objs:
+    #     - Echo
+    #     - PingService
+    #     - TitleService
+    #     - InfoService
     :logging:
       :logs:
         :default:

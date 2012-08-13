@@ -6,6 +6,8 @@ class HookBot
   # all hooks
   attr_reader :names
 
+  # Version of Hookbot
+  VERSION = "0.1.0"
 
   # defines the command character and other minor command things
   COMMAND_RX = /^[!]([a-zA-Z0-9]+)(.*)?$/
@@ -275,6 +277,9 @@ private
      :callback_name => name,
      :server        => @bot.server,
      :bot_nick      => @bot.nick,
+     :hooks         => @hooks,
+     :cmds          => @cmds,
+     :bot_version   => VERSION,
      :bot           => self
     }
   end

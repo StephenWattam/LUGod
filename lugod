@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+# -----------------------------------------------------------------------------------
+# Initial checks
 require 'rubygems'
 if RUBY_VERSION < "1.9.3" then
   $stderr.puts "This bot requires ruby >= 1.9.3"
@@ -11,6 +13,7 @@ if not require 'bundler/setup' then
   exit(1)
 end
 
+# -----------------------------------------------------------------------------------
 # Requirements for actual running
 require 'yaml'
 require 'timeout'
@@ -19,8 +22,12 @@ require './lib/multilog.rb'
 require './lib/hook_bot.rb'
 require './lib/hook_service.rb'
 
-# =====================
+# -----------------------------------------------------------------------------------
 # Constants, that is, true ones, not fron the config filke
+#
+# Bot version
+VERSION = '0.2.1'
+#
 #
 # Don't reconnect faster than this
 # This overrides the value of config[:bot_connection_poll_rate]
@@ -34,16 +41,16 @@ BOT_DC_TIMEOUT = 5
 # The logging level to use when loading log configs
 BOOTSTRAP_LOG_LEVEL = Logger::INFO
 
-CONFIG_FILE = "config/config.yml"
+CONFIG_FILE = 'config/config.yml'
 
-# =====================
+# -----------------------------------------------------------------------------------
 # Load into a persistent object so we can save later
 environment   = ARGV[0] 
 config        = PersistentHash.new(CONFIG_FILE, true)
 $log          = MultiOutputLogger.new({:level => BOOTSTRAP_LOG_LEVEL}, config[:logging][:progname])
+$log.info "LUGod v#{VERSION} starting..."
 
-
-# =====================
+# -----------------------------------------------------------------------------------
 # Configure environment system
 #
 if(environment)
@@ -54,7 +61,7 @@ if(environment)
     exit(1)
   end
 
-  $log.info "Starting in #{environment} mode..."
+  $log.info "Using #{environment} environment..."
   overrides = 0
   recursive_merge = lambda{|default, override|
       # if the thing to override is not a hash, don't probe further
@@ -79,7 +86,7 @@ if(environment)
 end
 
 
-# =====================
+# -----------------------------------------------------------------------------------
 # Then, create global log
 $log.info "Bootstrapping logs..."
 logdevs = []
@@ -102,7 +109,7 @@ $log.summarise_logging
 
 
 
-# =====================
+# -----------------------------------------------------------------------------------
 # Handle signals nicely.
 $log.debug "Installing signal handlers."
 %w{INT HUP KILL ABRT}.each{|s|
@@ -111,7 +118,7 @@ $log.debug "Installing signal handlers."
 
 
 
-# ----------------------------------------
+# -----------------------------------------------------------------------------------
 # Constuct hooks
 def camel_to_underscore(str)
   # First, isolate numbers, then break by case, then merge double-underscores again
@@ -137,7 +144,7 @@ config[:hooks][:objs].each{|h|
 }
 
 
-# ----------------------------------------
+# -----------------------------------------------------------------------------------
 # Instantiate the bot
 bot       = HookBot.new(config[:irc])
 services  = []
@@ -171,6 +178,7 @@ if config[:daemonise] then
   Process.daemon(true)
 end
 
+# -----------------------------------------------------------------------------------
 # Then connect
 begin
 

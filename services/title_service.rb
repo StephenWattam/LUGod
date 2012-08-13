@@ -1,10 +1,11 @@
 require 'net/http'
 require 'uri'
-
-
+require 'cgi'
 
 
 class TitleService < HookService
+
+  @version = "0.0.2"
 
   # Find URLs
   # Many thanks to http://mathiasbynens.be/demo/url-regex
@@ -94,7 +95,7 @@ private
       return nil if(not head['content-type'] =~ CONTENT_RX)
 
       # Make proper request
-      $log.debug "Correct content type!"
+      $log.debug 'Correct content type!'
       res   = http.get(path)
       body  = res.body
 
@@ -106,7 +107,7 @@ private
       title.gsub!("\n\r", "")
       title.gsub!(/\s+/, " ")
       title.strip!
-      title = URI.unescape(title)
+      title = CGIunescapeHTML(title)
     }
 
     return title

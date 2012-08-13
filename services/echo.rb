@@ -2,6 +2,8 @@
 
 class Echo < HookService
 
+  @version = "0.2"
+
   # Init and print a nice message
   def initialize(bot, config)
     super(bot, config)

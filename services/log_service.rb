@@ -3,6 +3,8 @@ require 'sqlite3'
 
 class LogService < HookService
 
+  @version = "0.2"
+
 SCHEMA = %{
 CREATE TABLE "messages" (
     "time" INTEGER NOT NULL,
