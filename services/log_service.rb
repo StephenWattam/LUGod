@@ -36,17 +36,12 @@ CREATE TABLE "messages" (
     @db = DatabaseConnection.new(@config[:database_path], 100, @config[:pragma])
   end
 
-  # output help
-  def print_help
-    @bot.say("Commands: help, seen NICK, search [TERM] [NICK], count [TERM] [NICK], fight TERM TERM")
-  end
-
-  def count(what, who)
-    @bot.say "I found #{perform_count(what, who)} occurrences in the logs." 
+  def count(server, channel, what, who)
+    @bot.say "I found #{perform_count(server, channel, what, who)} occurrences in the logs." 
   end
 
 
-  def fight(items)
+  def fight(server, channel, items)
     if items.length < 2
       @bot.say "Nothing to fight!" 
       return
@@ -61,7 +56,7 @@ CREATE TABLE "messages" (
     # Perform count    
     counts        = []
     items_escaped.each{|x|
-      counts << perform_count(x)
+      counts << perform_count(server, channel, x)
     }
 
     # Check for a draw
@@ -74,8 +69,8 @@ CREATE TABLE "messages" (
   end
 
 
-  def search(what, who)
-    rs, num = perform_search(what, who)
+  def search(server, channel, what, who)
+    rs, num = perform_search(server, channel, what, who)
 
     if rs.length > 0 then 
       # Then output
@@ -92,7 +87,7 @@ CREATE TABLE "messages" (
 
 
   # Output last datetime a user was seen
-  def seen(nick, who)
+  def seen(server, channel, nick, who, bot_nick)
     
 
     # Check the user isn't checking themself
@@ -102,13 +97,13 @@ CREATE TABLE "messages" (
     elsif nick == who then
       @bot.say "#{nick}, go look in a mirror."
       return
-    elsif who == @bot.nick
+    elsif who == bot_nick
       @bot.say "#{nick}, I'm right here.  Quit wasting my time!"
       return
     end
 
     # Read from the DB
-    rs = @db.select("messages", "`time`", "`from`=#{@db.escape(who)} AND `to` == #{@db.escape(@bot.channel)} AND `server` == #{@db.escape(@bot.server)}", "order by `time` desc limit 1;")
+    rs = @db.select("messages", "`time`", "`from`=#{@db.escape(who)} AND `to` == #{@db.escape(channel)} AND `server` == #{@db.escape(server)}", "order by `time` desc limit 1;")
 
     # Then output handy stuff.
     if rs.length == 0 then
@@ -126,16 +121,16 @@ CREATE TABLE "messages" (
     # TODO: Hook *everything*
 
     register_command(:log_seen, /seen/, [/channel/, /private/]){|who = "*"|
-      me.seen(nick, who)
+      me.seen(server, channel, nick, who, bot_nick)
     }
     register_command(:log_hist, /search/, [/channel/, /private/]){|what = "*", who = "*"|
-      me.search(what, who)
+      me.search(server, channel, what, who)
     }
     register_command(:log_count, /count/, [/channel/, /private/]){|what = "*", who = "*"|
-      me.count(what, who)
+      me.count(server, channel, what, who)
     }
     register_command(:log_fight, /fight/, /channel/){|*whats|
-      me.fight(whats)
+      me.fight(server, channel, whats)
     }
 
     # Ordinary channel messages
@@ -193,25 +188,25 @@ CREATE TABLE "messages" (
 
 private
 
-  def perform_count(what, who="*")
+  def perform_count(server, channel, what, who="*")
     # Get a count of everything
     rs = @db.select("messages", "count(*)", 
-                    "`server` == #{@db.escape(@bot.server)} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)")
+                    "`server` == #{@db.escape(server)} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(channel)} AND glob(#{@db.escape(what)}, message)")
 
     return rs.flatten[0].to_i
   end
 
 
-  def perform_search(what, who="*")
+  def perform_search(server, channel, what, who="*")
     # Quit if we didn't find anything
-    num = perform_count(what, who)
+    num = perform_count(server, channel, what, who)
     return [], 0 if num == 0 
 
 
     # Then select actual data
     rs = @db.select("messages", 
                     ["`time`", "`from`", "`message`"], 
-                    "`server` == #{@db.escape(@bot.server)} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(@bot.channel)} AND glob(#{@db.escape(what)}, message)", "order by `time` desc limit #{@config[:max_results]};");
+                    "`server` == #{@db.escape(server)} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(channel)} AND glob(#{@db.escape(what)}, message)", "order by `time` desc limit #{@config[:max_results]};");
 
     #puts "==>"
     #puts rs.to_s

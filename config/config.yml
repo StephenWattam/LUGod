@@ -52,7 +52,7 @@
     :logging:
       :logs:
         :default:
-          :level: :info
+          :level: :debug
         :file_log:
           :level: :debug
   :testing:                               

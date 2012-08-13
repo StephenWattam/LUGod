@@ -11,8 +11,8 @@ class HookBot
   # Initialize the object and configure the bot
   def initialize(conf)
     # Set up config and defaults
-    @config = conf
-    @config[:connect_timeout] = @config[:connect_timeout] || 10
+    @config                     = conf
+    @config[:connect_timeout] ||= 10
     
     # Keep track of hooks and what object owns what
     @hooks          = {}
@@ -25,17 +25,16 @@ class HookBot
 
   # Register a command, only invoked when COMMAND_RX is triggered.
   def register_command(mod, name, trigger, types = /channel/, &p)
-    raise "Please define a block" if not block_given?
-    raise "That command is already hooked." if @cmds[name]
-    raise "The module given is not a module" if not mod.is_a?(HookService)
+    raise "Please define a block"               if not block_given?
+    raise "That command is already hooked."     if @cmds[name]
+    raise "The module given is not a module"    if not mod.is_a?(HookService)
  
-
-    types = [types] if not types.is_a? Array
+    # Ensure types is an array and is full of regex
+    types = [types] if not types.is_a?(Array)
     types.map!{|x| (x.is_a? Regexp) ? x : Regexp.new(x.to_s)} # convert to rx if not already
 
-    # Ensure default and check we're not clobbering
+    # Ensure default and register 
     @cmds[name] ||= {}
-    # then register
     @cmds[name] = {:types => types, :trigger => trigger, :proc => p, :module => mod}
 
     # register hook or command for a given module
@@ -47,20 +46,18 @@ class HookBot
 
   # Register a hook to be run on any message
   def register_hook(mod, name, trigger = nil, types = /channel/, &p)
-    raise "Please define a block" if not block_given?
-    trigger ||= lambda{|*| return true}
-    raise "Cannot call the trigger expression (type: #{trigger.class})!  Ensure it responds to call()" if not trigger.respond_to? :call
-    raise "That command is already hooked." if @hooks[name]
-    raise "The module given is not a module" if not mod.is_a?(HookService)
+    raise "Please define a block"               if not block_given?
+    raise "That command is already hooked."     if @hooks[name]
+    raise "The module given is not a module"    if not mod.is_a?(HookService)
+    trigger ||= lambda{|*| return true}         # set trigger if someone has allowed it to be default
+    raise "Cannot call the trigger expression (type: #{trigger.class})!  Ensure it responds to call()" if not trigger.respond_to?(:call)
    
-    # Ensure types is an array
-    types = [types] if not types.is_a? Array
+    # Ensure types is an array and is full of regex
+    types = [types] if not types.is_a?(Array)
     types.map!{|x| (x.is_a? Regexp) ? x : Regexp.new(x.to_s)} # convert to rx if not already
     
-    # Ensure defaults 
+    # Ensure defaults and register 
     @hooks[name] ||= {}
-    
-    # register
     @hooks[name] = {:types => types, :trigger => trigger, :proc => p, :module => mod}
     
     # Register a given hook or command for a give module
@@ -155,27 +152,37 @@ class HookBot
 
   end
 
+  # Run the bot
+  # This can be done in a blocking or non-blocking way
+  # if verify is true and threaded is true, the bot will
+  # sit and check that it has successfully connected before
+  # continuing (and raise an exception on connection failure).
   def run(threaded=true, verify=true)
-    $log.info "Starting IRC Bot"
-    # Run the bot.
-    @thread = Thread.new do
-      $log.info "Bot thread started."
-      @bot.start
-    end
+    $log.info "Starting IRC Bot..."
 
-    
-    # Wait for it to connect
-    if(threaded and verify) then
-      delay = 0
-      while(not @bot.connected? and delay < @config[:connect_timeout]) do
-        sleep(0.5)
-        delay += 0.5
+    if threaded then
+      # Run the bot.
+      @thread = Thread.new do
+        $log.info "Bot thread started."
+        @bot.start
       end
+      
+      # Wait for it to connect
+      if verify then
+        delay = 0
+        while(not @bot.connected? and delay < @config[:connect_timeout]) do
+          sleep(0.5)
+          delay += 0.5
+        end
 
-      raise "Bot timed out during first connect." if(delay >= @config[:connect_timeout])
+        raise "Bot timed out during first connect." if(delay >= @config[:connect_timeout])
+      end
+    else
+      @bot.start
     end
   end
 
+  # Send a message via the hook/command system
   def dispatch(type, nick, message, raw_msg)
     $log.debug "Received a message of type #{type}"
 
@@ -193,14 +200,7 @@ class HookBot
     @bot.kick @config[:channel], nick, reason
   end
 
-  def server
-    @bot.server
-  end
-
-  def nick
-    @config[:nick]
-  end
-
+  # Is the bot currently connected?
   def connected?
     @bot.connected?
   end
@@ -222,10 +222,6 @@ class HookBot
     
     # Quit
     @bot.quit reason
-  end
-
-  def channel
-    @config[:channel]
   end
 
 private
