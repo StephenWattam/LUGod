@@ -49,13 +49,13 @@ class ReminderService < HookService
 
   def hook_thyself
     me = self
-    @bot.register_hook(:tell, nil, [/channel/, /private/]){ me.monitor nick }
+    @bot.register_hook(self, :tell, nil, [/channel/, /private/]){ me.monitor nick }
 
-    @bot.register_command(:tell_cmd, /tell/, [/channel/, /private/]){|who = nil, *args| 
+    @bot.register_command(self, :tell_cmd, /tell/, [/channel/, /private/]){|who = nil, *args| 
       me.tell(nick, who, args.join(" "))
     }
 
-    @bot.register_command(:tell_override_cmd, /TELL/, [/channel/, /private/]){|who = nil, *args|
+    @bot.register_command(self, :tell_override_cmd, /TELL/, [/channel/, /private/]){|who = nil, *args|
       me.tell_override(nick, who, args.join(" "))
     }
   end

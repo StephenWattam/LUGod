@@ -2,10 +2,6 @@ require File.join(File.dirname(__FILE__), "isaac", "bot")
 require 'shellwords'
 
 class HookBot 
-  # Possible to access all names on the channel, and 
-  # all hooks
-  attr_reader :names
-
   # Version of Hookbot
   VERSION = "0.1.0"
 
@@ -18,9 +14,6 @@ class HookBot
     @config = conf
     @config[:connect_timeout] = @config[:connect_timeout] || 10
     
-    # Store IRC names in the channel TODO: expand to more than one channel
-    @names          = []
-
     # Keep track of hooks and what object owns what
     @hooks          = {}
     @cmds           = {}
@@ -30,7 +23,7 @@ class HookBot
   end
 
   # Register a command, only invoked when COMMAND_RX is triggered.
-  def register_command(name, trigger, types = /channel/, &p)
+  def register_command(mod, name, trigger, types = /channel/, &p)
     raise "Please define a block" if not block_given?
     raise "That command is already hooked." if @cmds[name]
  
@@ -41,12 +34,12 @@ class HookBot
     # Ensure default and check we're not clobbering
     @cmds[name] ||= {}
     # then register
-    @cmds[name] = {:types => types, :trigger => trigger, :proc => p}
+    @cmds[name] = {:types => types, :trigger => trigger, :proc => p, :module => mod}
     $log.debug "Registered command '#{name}'"
   end
 
   # Register a hook to be run on any message
-  def register_hook(name, trigger = nil, types = /channel/, &p)
+  def register_hook(mod, name, trigger = nil, types = /channel/, &p)
     raise "Please define a block" if not block_given?
     trigger ||= lambda{|*| return true}
     raise "Cannot call the trigger expression (type: #{trigger.class})!  Ensure it responds to call()" if not trigger.respond_to? :call
@@ -60,15 +53,14 @@ class HookBot
     @hooks[name] ||= {}
     
     # register
-    @hooks[name] = {:types => types, :trigger => trigger, :proc => p}
-
+    @hooks[name] = {:types => types, :trigger => trigger, :proc => p, :module => mod}
     $log.debug "Registered hook '#{name}'"
   end
 
   # Remove hook by name
   def unregister_hooks(*names)
     names.each{|name|
-      @hooks.delete(name) 
+      x = @hooks.delete(name)
     }
   end
 
@@ -92,7 +84,6 @@ class HookBot
         c.environment = :production
         c.verbose     = conf[:verbose] || false 
         c.log         = $log
-        #c.verbose     = false 
     }
 
     @bot.register{

@@ -72,7 +72,7 @@ class WolframService < HookService
 
   def hook_thyself
     me = self
-    @bot.register_command(:ask, /ask/, [/channel/, /private/]){|*args|
+    @bot.register_command(self, :ask, /ask/, [/channel/, /private/]){|*args|
       me.ask(args.join(" "))
     }
   end

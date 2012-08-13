@@ -5,15 +5,44 @@ class InfoService < HookService
   @version = "0.0.1"
 
 
-  def list_commands(bot_version, cmds, hooks)
-    @bot.say("Hookbot v#{bot_version}.  Supports #{cmds.length} commands (#{hooks.length} hooks).")
+  def list_commands(bot_version, cmds, hooks, more=nil)
+
+    # Create a single list of classes from the hooks, cmds list.
+    modules = {}
+    cmds.each {|name, cmd| 
+      cls = cmd[:module].class.to_s
+
+      modules[cls] ||= {:hooks => [], :cmds => []}
+      modules[cls][:cmds] << name
+    }
+    hooks.each {|name, hook| 
+      cls = hook[:module].class.to_s
+
+      modules[cls] ||= {:hooks => [], :cmds => []}
+      modules[cls][:hooks] << name
+    }
+
+    # output nicely
+    str = "Hookbot v#{bot_version}.  "
+    str += "Registered module#{(modules.length == 1) ? '' : 's'} (#{modules.length}): #{modules.map{|m, list|
+      hooks, cmds = list.values
+
+      if more then
+        "#{m}(#{cmds.length}c#{hooks.length}h)"
+      else
+        "#{m}"
+      end
+
+    }.join('; ')}"
+
+    @bot.say(str)
   end
 
   def hook_thyself
     me      = self
 
-    @bot.register_command(:list_commands, /[bB]ot[Ii]nfo/, /channel/){
-                        me.list_commands(bot_version, cmds, hooks)
+    @bot.register_command(self, :list_commands, /[bB]ot[Ii]nfo/, /channel/){|more=nil|
+                        me.list_commands(bot_version, cmds, hooks, more)
                       }
   end
 

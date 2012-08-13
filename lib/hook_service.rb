@@ -3,6 +3,7 @@
 class HookService
 
   @version = "0"
+  attr_reader :version
 
   def initialize(bot, config)
     @bot    = bot

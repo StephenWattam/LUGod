@@ -30,7 +30,7 @@ class SpellService < HookService
 
   def hook_thyself
     me = self
-    @bot.register_command(:spell, /spell/, /channel/){|word = nil, num_suggestions = 0|
+    @bot.register_command(self, :spell, /spell/, /channel/){|word = nil, num_suggestions = 0|
       me.spell(word, num_suggestions)
     }
   end

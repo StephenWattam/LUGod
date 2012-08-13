@@ -12,7 +12,7 @@ class PingService < HookService
   def hook_thyself
     me      = self
 
-    @bot.register_command(:ping, /[Pp]ing/, /channel/){
+    @bot.register_command(self, :ping, /[Pp]ing/, /channel/){
                         me.ping
                       }
   end
