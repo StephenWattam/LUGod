@@ -249,7 +249,7 @@ private
               # Then invoke
               $log.debug "Dispatching hook '#{name}'..."
               invoke(prepare_vars(raw_msg, name), p)
-              $log.debug "Finished."
+              $log.debug "Finished running hook #{name}."
             end
           rescue Exception => e
             say("Error in #{name}: #{e}")
@@ -298,6 +298,7 @@ private
               $log.debug "Arity of block: #{p.arity}, args: #{args.length}"
               $log.debug "Dispatching command hook #{name} for #{cmd}..."
               invoke(prepare_vars(raw_msg, name), p, args)
+              $log.debug "Finished processing command hook #{name}."
             rescue Exception => e
               say("Error in #{name}: #{e}")
               $log.error "Error in callback for command: #{cmd} => #{e}"

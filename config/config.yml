@@ -19,7 +19,7 @@
     - TitleService
     - SpellService
     - ReminderService 
-    - WolframService 
+    # - WolframService 
     - LogService
     - PingService 
     - InfoService
@@ -60,4 +60,4 @@
     :irc:
       :nick: ^LUGod_test
       :password:                      # the test nick is not registered
-      :channel: ! '#lucs-dev'
+      # :channel: ! '#lucs-dev'
