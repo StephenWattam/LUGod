@@ -15,12 +15,12 @@ class WolframService < HookService
     "Wolfram Alpha --- simply !ask anything..."
   end
 
-  def ask(query)
+  def ask(bot, query)
     question  = Wolfram.query(query)
     answer    = question.fetch
 
     if not answer.success?
-      @bot.say "Wolfram was unable to find an answer!"
+      bot.say "Wolfram was unable to find an answer!"
       return
     end
     
@@ -56,15 +56,15 @@ class WolframService < HookService
 
 
     if identity.length > 0 then
-      @bot.say "Identities: #{identity.join("; ")}"
+      bot.say "Identities: #{identity.join("; ")}"
     end
 
     if msg.length > 0 then
-      @bot.say "Results: #{msg.join("; ")}"
+      bot.say "Results: #{msg.join("; ")}"
     end
 
     if msg.length == 0 and identity.length == 0 then
-      @bot.say "No results I could render nicely!"
+      bot.say "No results I could render nicely!"
     end
 
   rescue Exception => e
@@ -76,7 +76,7 @@ class WolframService < HookService
   def hook_thyself
     me = self
     register_command(:ask, /ask/, [/channel/, /private/]){|*args|
-      me.ask(args.join(" "))
+      me.ask(bot, args.join(" "))
     }
   end
 

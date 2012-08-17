@@ -1,17 +1,14 @@
 
 # Superclass of all hooks
 class HookService
-  @version  = "0.0.0"
-
-  def initialize(bot, config)
-    @bot    = bot
+  def initialize(hook_manager, config)
+    @hook_manager = hook_manager
     @config = config
   end
 
   # Close any module resources.
   # No need to unhook, the bot will do it.
   def close
-    @bot.unregister_modules(self)
   end
 
   # pullup and define hooks
@@ -24,11 +21,34 @@ class HookService
   end
     
 protected
+  # Register a hook
   def register_hook(name, trigger = nil, types = /channel/, &p)
-    @bot.register_hook(self, name, trigger, types, &p)
+    @hook_manager.register_hook(self, name, trigger, types, &p)
   end
 
+  # Register a command
   def register_command(name, trigger, types = /channel/, &p)
-    @bot.register_command(self, name, trigger, types, &p)
+    @hook_manager.register_command(self, name, trigger, types, &p)
   end
+
+  # Remove hook by name
+  def unregister_hooks(*names)
+    @hook_manager.unregister_hooks(*names)
+  end
+
+  # Remove cmd by name
+  def unregister_commands(*names)
+    @hook_manager.unregister_commands(*names)
+  end
+
+  # Unregister everything by a given module
+  def unregister_modules(*mods)
+    @hook_manager.unregister_modules(*mods)
+  end
+
+  def unregister_all
+    @hook_manager.unregister_modules(self)
+  end
+
+
 end 

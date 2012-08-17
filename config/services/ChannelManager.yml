@@ -1,0 +1,5 @@
+---
+:connect_only: true   # if true channelmanager will not try to ensure the bot rejoins channels it is kicked from.
+:channels:
+  - ! '#lucs'
+  - ! '#lucs-dev'

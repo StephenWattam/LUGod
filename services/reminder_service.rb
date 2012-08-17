@@ -20,20 +20,20 @@ class ReminderService < HookService
   end
 
   # Monitor conversation to see if someone's said something.
-  def monitor( nick )
+  def monitor( bot, nick )
     dcnick = nick.downcase
     return if not @reminders[dcnick] or @reminders[dcnick].length == 0
 
     while( @reminders[dcnick].length > 0 ) do
       r = @reminders[dcnick].pop
-      @bot.say( "[#{r[:time].strftime("%m/%d/%Y %I:%M%p")}] #{r[:from]} (for #{nick}) : #{r[:msg]}" )
+      bot.say( "[#{r[:time].strftime("%m/%d/%Y %I:%M%p")}] #{r[:from]} (for #{nick}) : #{r[:msg]}" )
     end
   end
   
   # Normal method for registering a message
-  def tell(from, user = nil, msg = nil, override=false)
+  def tell(bot, from, user = nil, msg = nil, override=false)
     if not user then
-      @bot.say "Usage: !#{(override)? 'TELL' : 'tell'} nick \"a message to give to nick.\""
+      bot.say "Usage: !#{(override)? 'TELL' : 'tell'} nick \"a message to give to nick.\""
       return
     end
 
@@ -46,15 +46,15 @@ class ReminderService < HookService
     me = self
 
     register_hook(:tell, nil, [/channel/, /private/]){ 
-      me.monitor(nick)
+      me.monitor(bot, nick)
     }
 
     register_command(:tell_cmd, /tell/, [/channel/, /private/]){|who = nil, *args| 
-      me.tell(nick, who, args.join(" "), false)
+      me.tell(bot, nick, who, args.join(" "), false)
     }
 
     register_command(:tell_override_cmd, /TELL/, [/channel/, /private/]){|who = nil, *args|
-      me.tell(nick, who, args.join(" "), true)
+      me.tell(bot, nick, who, args.join(" "), true)
     }
   end
  

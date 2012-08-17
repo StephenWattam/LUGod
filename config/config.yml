@@ -8,7 +8,6 @@
   :name: LU Master of All               # The full name of the user
   :password: lugodpass                  # Nick auth
   :server: irc.freenode.net             # The server
-  :channel: ! '#lucs'                   # El channel
   :port: 6667                           # Port
   :verbose: false                       # turn logging on/off for the bot
 :hooks:
@@ -16,6 +15,7 @@
   :config_dir: config/services/         # Where service objects' config files are located
   :objs:                                # A list of service object names (instantiated with eval)
     # - Echo
+    - ChannelManager
     - TitleService
     - SpellService
     - ReminderService 
@@ -41,11 +41,12 @@
     :irc:
       :nick: ^LUGod_dbg
       :password:                      # the test nick is not registered
-      :channel: ! '#lucs-dev'
-      :verbose: true                  # Enable/disable bot level logging
-#    :hooks:
-#      :objs:
-#        - Echo
+      :verbose: false                  # Enable/disable bot level logging
+    # :hooks:
+    #   :objs:
+    #     # - Echo
+    #     - InfoService
+    #     - ChannelManager
     :logging:
       :logs:
         :default:

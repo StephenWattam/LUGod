@@ -9,10 +9,9 @@ class InfoService < HookService
   end
 
 
-  def list_commands(bot_version, cmds, hooks, modules, more=nil)
+  def list_commands(bot, cmds, hooks, modules, more=nil)
     # output nicely
-    str = "Hookbot v#{bot_version}.  "
-    str += "Registered module#{(modules.length == 1) ? '' : 's'} (#{modules.length}): #{modules.map{|m, list|
+    str = "Registered module#{(modules.length == 1) ? '' : 's'} (#{modules.length}): #{modules.map{|m, list|
       hooks, cmds = list.values
 
       if more then
@@ -23,18 +22,18 @@ class InfoService < HookService
 
     }.join('; ')}"
 
-    @bot.say(str)
+    bot.say(str)
   end
 
 
-  def module_help(modules, mod)
+  def module_help(bot, modules, mod)
 
     # Find the module
     mod = modules.keys.map{|m| m.class.to_s}.index(mod)
 
     # Check the module is loaded
     if not mod then 
-      @bot.say "Unknown module (use !info to list loaded ones)"
+      bot.say "Unknown module (use !info to list loaded ones)"
       return
     end
 
@@ -42,9 +41,9 @@ class InfoService < HookService
     mod = modules.keys[mod]
     
     if mod.respond_to?(:help) then
-      @bot.say("#{mod.help}")
+      bot.say("#{mod.help}")
     else
-      @bot.say("Module: #{mod.class} has no help method, sorry.")
+      bot.say("Module: #{mod.class} has no help method, sorry.")
     end
 
   end
@@ -53,14 +52,14 @@ class InfoService < HookService
     me      = self
 
     register_command(:list_commands, /[Ii]nfo/, [/channel/, /private/]){|more=nil|
-                        me.list_commands(bot_version, cmds, hooks, modules, more)
+                        me.list_commands(bot, cmds, hooks, modules, more)
                       }
     
     register_command(:help_module, /[Hh]elp/, [/channel/, /private/]){|mod = nil|
                         if mod then
-                          me.module_help(modules, mod)
+                          me.module_help(bot, modules, mod)
                         else
-                          me.list_commands(bot_version, cmds, hooks, modules, false)
+                          me.list_commands(bot, cmds, hooks, modules, false)
                         end
                       }
   end

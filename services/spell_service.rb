@@ -20,22 +20,22 @@ class SpellService < HookService
   end
 
 
-  def spell(word = nil, num_suggestions=8)
+  def spell(bot, word = nil, num_suggestions=8)
     num_suggestions = num_suggestions.to_i
 
     if not word then
-      @bot.say "Usage: !spell word [num_suggestions]"
+      bot.say "Usage: !spell word [num_suggestions]"
       return
     end
 
     suggestions = @spell.suggest(word)
-    @bot.say suggestions[0..([@config[:max_suggestions], num_suggestions].min)].join(", ")
+    bot.say suggestions[0..([@config[:max_suggestions], num_suggestions].min)].join(", ")
   end
 
   def hook_thyself
     me = self
     register_command(:spell, /spell/, /channel/){|word = nil, num_suggestions = 0|
-      me.spell(word, num_suggestions)
+      me.spell(bot, word, num_suggestions)
     }
   end
 end

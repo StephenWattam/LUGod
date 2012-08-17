@@ -21,14 +21,14 @@ class TitleService < HookService
   end
 
 
-  def check_link( message )
+  def check_link( bot, message )
     uris = URI.extract(message, ["http", "https"]).uniq
     #uris = (message.scan(URL_RX))
     $log.debug "Found #{uris.length} URLs in message."
 
     # Check max and let the user know we haven't just died.
     if(uris.length > @config[:max_urls_per_msg])
-      @bot.say( "Too many links :-(")
+      bot.say( "Too many links :-(")
       return
     end
 
@@ -46,21 +46,21 @@ class TitleService < HookService
     if titles.length > 1 
       c = 0
       titles.each{|t|
-        @bot.say(@config[:title_multiple_template]% [c+=1, titles.length, t]) 
+        bot.say(@config[:title_multiple_template]% [c+=1, titles.length, t]) 
       }
     elsif titles.length > 0
-      @bot.say(@config[:title_template] % titles[0])
+      bot.say(@config[:title_template] % titles[0])
     end
   end
 
   def hook_thyself
     me      = self
-    trigger = lambda{|nick, message, raw|
-                        return message =~ URL_RX
+    trigger = lambda{|raw|
+                        return (raw and raw.message =~ URL_RX)
                     }
 
     register_hook(:titlefinder, trigger, /channel/){
-                        me.check_link(message)
+                        me.check_link(bot, message)
                       }
   end
 

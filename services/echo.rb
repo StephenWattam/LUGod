@@ -9,15 +9,15 @@ class Echo < HookService
   end
 
   # Init and print a nice message
-  def initialize(bot, config)
-    super(bot, config)
+  def initialize(hooker, config)
+    super(hooker, config)
     puts "--- ECHO INITIALIZED"
   end
 
   # Respond to a channel message
-  def echo_to_irc( msg )
+  def echo_to_irc( bot, msg )
     $log.debug "Received channel message, echoing..."
-    @bot.say( msg ) 
+    bot.say( msg ) 
   end
 
   # Respond to a channel message
@@ -30,9 +30,9 @@ class Echo < HookService
   # Arguments are provided as if they are direct,
   # i.e. two arguments can be caught with method(one, two),
   # varargs can be caught with method(one, *args), etc.
-  def echo_cmd( msg )
+  def echo_cmd( bot, msg )
     $log.info "Running command: echo..."
-    @bot.say( "you asked me to echo: #{msg}" )
+    bot.say( "you asked me to echo: #{msg}" )
     $log.info "Done running command: echo :-)"
   end
 
@@ -48,7 +48,7 @@ class Echo < HookService
                        nil,
                        [/channel/, /private/]
                       ){                              # The block to call
-                        me.echo_to_irc(message)
+                        me.echo_to_irc(bot, message)
                       } 
 
 
@@ -67,10 +67,10 @@ class Echo < HookService
     #  - return false/nil to avoid handling, or
     #  - return any object to accept and trigger the handler.
     register_hook(:echo_triggered,
-                        lambda{|nick, message, raw_msg|     # This is the trigger expression,
-                          return (message =~ /echo/)        # It is optional for all non-command hooks,
+                        lambda{|m|     # This is the trigger expression,
+                          return (m and m.message =~ /echo/)        # It is optional for all non-command hooks,
                              }){                            # In this case, we just return true if the user types "echo"
-                        me.echo_to_channel nick, message
+                        me.echo_to_irc(bot, message)
                       }
 
     # -------------------------------------------------------------------------------------------------------
@@ -86,7 +86,7 @@ class Echo < HookService
     # two arguments
    
     register_command(:echo_cmd, /[Ee]cho/, /channel/){|*args|
-      me.echo_cmd args.join(" ")
+      me.echo_cmd(bot, args.join(" "))
     }
   end
 end

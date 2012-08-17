@@ -8,7 +8,7 @@ module Isaac
 
   class Bot
     # Access config properties
-    attr_accessor :config, :irc, :nick, :channel, :message, :user, :host, :match, :error, :raw_msg, :log, :type, :server
+    attr_accessor :config, :irc, :nick, :channel, :message, :user, :host, :match, :error, :raw_msg, :log, :server
 
     # Initialise with a block for caling :on, etc
     def initialize(&b)
@@ -119,36 +119,40 @@ module Isaac
 
     # Dispatch an event using the hook system
     def dispatch(event, msg=nil)
+      return if not @hook
+
       if msg
         @nick, @user, @host, @channel, @error, @message, @raw_msg = 
           msg.nick, msg.user, msg.host, msg.channel, msg.error, msg.message, msg
       end
-      @type = event
 
-      invoke @hook if @hook
+      #invoke(event, msg, @hook)
+      @hook.call(event, msg)
     end
 
-  private
+  # private
 
-    # Invoke a callback
-    # this is really quite cunning
-    def invoke(block)
-      mc = class << self; self; end
-      mc.send :define_method, :__isaac_event_handler, &block
+    # # Invoke a callback
+    # # this is really quite cunning
+    # def invoke(type, msg, block)
+    #   mc = class << self; self; end
+    #   mc.send :define_method, :type, Proc.new{|| return type}
+    #   mc.send :define_method, :msg, Proc.new{|| return msg}
+    #   mc.send :define_method, :__isaac_event_handler, &block
 
-      # -1  splat arg, send everything
-      #  0  no args, send nothing
-      #  1  defined number of args, send only those
-      bargs = case block.arity <=> 0
-        when -1; match
-        when 0; match
-        when 1; match[0..block.arity-1]
-      end
+    #   # -1  splat arg, send everything
+    #   #  0  no args, send nothing
+    #   #  1  defined number of args, send only those
+    #   bargs = case block.arity <=> 0
+    #     when -1; match
+    #     when 0; match
+    #     when 1; match[0..block.arity-1]
+    #   end
 
-      catch(:halt) { 
-        __isaac_event_handler(*bargs) 
-      }
-    end
+    #   catch(:halt) { 
+    #     __isaac_event_handler(*bargs) 
+    #   }
+    # end
   end
 
   # Handles low-level IRC communications

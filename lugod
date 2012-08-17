@@ -146,8 +146,9 @@ config[:hooks][:objs].each{|h|
 
 # -----------------------------------------------------------------------------------
 # Instantiate the bot
-bot       = HookBot.new(config[:irc])
-services  = []
+hook_manager  = HookBot::HookManager.new
+bot           = HookBot::Bot.new(config[:irc], hook_manager)
+services      = []
 config[:hooks][:objs].each{|h|
   
   # Create the hook object with a reference to the bot
@@ -161,7 +162,7 @@ config[:hooks][:objs].each{|h|
     }
   end
 
-  hook          = eval("#{h}.new(bot, hook_config)")
+  hook = eval("#{h}.new(hook_manager, hook_config)")
   hook.hook_thyself
   services << hook
 
@@ -207,7 +208,7 @@ rescue SignalException => Se
     
     # Unhook any that didn't unhook themself
     $log.fatal "Unhooking remaining services..."
-    bot.unregister_all
+    hook_manager.unregister_all
    
     # Then d/c bot
     $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s)"

@@ -40,14 +40,14 @@ CREATE TABLE "messages" (
     @db = DatabaseConnection.new(@config[:database_path], 100, @config[:pragma])
   end
 
-  def count(server, channel, what, who)
-    @bot.say "I found #{perform_count(server, channel, what, who)} occurrences in the logs." 
+  def count(bot, server, channel, what, who)
+    bot.say "I found #{perform_count(server, channel, what, who)} occurrences in the logs." 
   end
 
 
-  def fight(server, channel, items)
+  def fight(bot, server, channel, items)
     if items.length < 2
-      @bot.say "Nothing to fight!" 
+      bot.say "Nothing to fight!" 
       return
     end
 
@@ -65,15 +65,15 @@ CREATE TABLE "messages" (
 
     # Check for a draw
     if counts.inject(counts[0]){|same, x| x && x == same ? x : nil } then
-      @bot.say "Draw! #{(items.length == 2)?'Both' : 'All'} items had #{counts[0]} occurrence#{(counts[0] == 1)?'':'s'}."
+      bot.say "Draw! #{(items.length == 2)?'Both' : 'All'} items had #{counts[0]} occurrence#{(counts[0] == 1)?'':'s'}."
     else
       # Return results
-      @bot.say "#{items[counts.index(counts.max)]} wins (#{counts.join(", ")})"
+      bot.say "#{items[counts.index(counts.max)]} wins (#{counts.join(", ")})"
     end
   end
 
 
-  def search(server, channel, what, who)
+  def search(bot, server, channel, what, who)
     rs, num = perform_search(server, channel, what, who)
 
     if rs.length > 0 then 
@@ -81,28 +81,28 @@ CREATE TABLE "messages" (
       i     = 0
       rs.each{|msginfo|
         time, nick, message = msginfo
-        @bot.say "#{num - i}/#{num} -- [#{Time.at(time).strftime("%d/%m/%y %H:%M")}] <#{nick}> #{message}"
+        bot.say "#{num - i}/#{num} -- [#{Time.at(time).strftime("%d/%m/%y %H:%M")}] <#{nick}> #{message}"
         i += 1
       }
     else
-      @bot.say "No results!"
+      bot.say "No results!"
     end
   end
 
 
   # Output last datetime a user was seen
-  def seen(server, channel, nick, who, bot_nick)
+  def seen(bot, server, channel, nick, who, bot_nick)
     
 
     # Check the user isn't checking themself
     if not who then
-      @bot.say "Provide a person to look for, please."
+      bot.say "Provide a person to look for, please."
       return
     elsif nick == who then
-      @bot.say "#{nick}, go look in a mirror."
+      bot.say "#{nick}, go look in a mirror."
       return
     elsif who == bot_nick
-      @bot.say "#{nick}, I'm right here.  Quit wasting my time!"
+      bot.say "#{nick}, I'm right here.  Quit wasting my time!"
       return
     end
 
@@ -111,11 +111,11 @@ CREATE TABLE "messages" (
 
     # Then output handy stuff.
     if rs.length == 0 then
-      @bot.say "I have never seen #{who}."
+      bot.say "I have never seen #{who}."
       return
     else
       time = rs.flatten[0].to_i
-      @bot.say "Last message from #{who}: #{Time.at(time).strftime("%A %B %d, %H:%M:%S")}"
+      bot.say "Last message from #{who}: #{Time.at(time).strftime("%A %B %d, %H:%M:%S")}"
     end
   end
 
@@ -125,31 +125,22 @@ CREATE TABLE "messages" (
     # TODO: Hook *everything*
 
     register_command(:log_seen, /seen/, [/channel/, /private/]){|who = "*"|
-      me.seen(server, channel, nick, who, bot_nick)
+      me.seen(bot, server, channel, nick, who, bot_nick)
     }
     register_command(:log_hist, /search/, [/channel/, /private/]){|what = "*", who = "*"|
-      me.search(server, channel, what, who)
+      me.search(bot, server, channel, what, who)
     }
     register_command(:log_count, /count/, [/channel/, /private/]){|what = "*", who = "*"|
-      me.count(server, channel, what, who)
+      me.count(bot, server, channel, what, who)
     }
     register_command(:log_fight, /fight/, /channel/){|*whats|
-      me.fight(server, channel, whats)
+      me.fight(bot, server, channel, whats)
     }
 
     # Ordinary channel messages
-    register_hook(:log_listener, nil, /channel/){
+    register_hook(:log_listener, nil, [/channel/, /private/]){
       m     = raw_msg 
-      to    = m.channel
-      from  = nick
-    
-      me.add_to_log(m.command, to, from, m.host, m.message, m.raw, server)
-    }
-
-    # private messages
-    register_hook(:log_listener_private, nil, /private/){
-      m     = raw_msg
-      to    = m.params[0] || "unknown"
+      to    = m.recipient
       from  = nick
     
       me.add_to_log(m.command, to, from, m.host, m.message, m.raw, server)
