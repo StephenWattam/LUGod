@@ -8,7 +8,7 @@ module Isaac
 
   class Bot
     # Access config properties
-    attr_accessor :config, :irc, :nick, :channel, :message, :user, :host, :match, :error, :raw_msg, :log, :server
+    attr_accessor :config, :irc, :nick, :log, :server
 
     # Initialise with a block for caling :on, etc
     def initialize(&b)
@@ -121,10 +121,10 @@ module Isaac
     def dispatch(event, msg=nil)
       return if not @hook
 
-      if msg
-        @nick, @user, @host, @channel, @error, @message, @raw_msg = 
-          msg.nick, msg.user, msg.host, msg.channel, msg.error, msg.message, msg
-      end
+#      if msg
+#        @nick, @user, @host, @channel, @error, @message, @raw_msg = 
+#          msg.nick, msg.user, msg.host, msg.channel, msg.error, msg.message, msg
+#      end
 
       #invoke(event, msg, @hook)
       @hook.call(event, msg)
