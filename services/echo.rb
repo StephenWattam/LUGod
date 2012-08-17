@@ -4,6 +4,10 @@ class Echo < HookService
 
   @version = "0.2"
 
+  def help
+    "EchoService echoes.  A lot.  Mainly used for debugging."
+  end
+
   # Init and print a nice message
   def initialize(bot, config)
     super(bot, config)

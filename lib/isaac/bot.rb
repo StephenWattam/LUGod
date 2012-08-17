@@ -211,7 +211,7 @@ module Isaac
 
     # Handle all comms from the server
     def parse(input)
-      log.debug "Received #{input}" if @bot.config.verbose
+      log.debug "[isaac] Received #{input.chomp}" if @bot.config.verbose
       #puts "<< #{input.unpack('A' * input.length).join(",")}" if @bot.config.verbose
       msg = Message.new(input)
 

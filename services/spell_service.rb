@@ -8,6 +8,10 @@ class SpellService < HookService
 
   @version = "0.1"
 
+  def help
+    "Spell checker using aspell.  Say '!spell word [number]' to get suggestions."
+  end 
+
   def initialize(bot, config)
     super(bot, config)
     #raise "Please install the 'raspell' gem and aspell tool." if not 

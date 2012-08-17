@@ -16,6 +16,11 @@ class TitleService < HookService
   TITLE_RX = /<\s*title\s*>(.*)<\s*\/\s*title\s*>/mi
 
 
+  def help
+    "TitleService looks up HTML titles.  It's a lone wolf, controlled by no man."
+  end
+
+
   def check_link( message )
     uris = URI.extract(message, ["http", "https"]).uniq
     #uris = (message.scan(URL_RX))

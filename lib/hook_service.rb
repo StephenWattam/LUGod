@@ -1,8 +1,7 @@
 
 # Superclass of all hooks
 class HookService
-
-  @version = "0.0.0"
+  @version  = "0.0.0"
 
   def initialize(bot, config)
     @bot    = bot
@@ -20,6 +19,10 @@ class HookService
   end
   alias :setup_hooks :hook_thyself
 
+  def help
+    "No help available, sorry."
+  end
+    
 protected
   def register_hook(name, trigger = nil, types = /channel/, &p)
     @bot.register_hook(self, name, trigger, types, &p)

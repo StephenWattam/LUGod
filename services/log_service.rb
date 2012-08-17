@@ -18,6 +18,10 @@ CREATE TABLE "messages" (
 );
 }
 
+  def help
+    "Logging service, capable of searching using '!search pattern [nick]', counting using '!count pattern', log-fighting with '!fight p1 p2 ...', and '!seen nick'.  Supports unix glob syntax on all fields."
+  end
+
   # Connect to db
   def initialize(bot, config)
     super(bot, config)

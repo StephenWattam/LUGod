@@ -11,6 +11,9 @@ class WolframService < HookService
     Wolfram.appid = @config[:app_id] 
   end
 
+  def help
+    "Wolfram Alpha --- simply !ask anything..."
+  end
 
   def ask(query)
     question  = Wolfram.query(query)
