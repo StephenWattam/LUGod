@@ -43,12 +43,9 @@
       :password:                      # the test nick is not registered
       :channel: ! '#lucs-dev'
       :verbose: true                  # Enable/disable bot level logging
-    # :hooks:
-    #   :objs:
-    #     - Echo
-    #     - PingService
-    #     - TitleService
-    #     - InfoService
+#    :hooks:
+#      :objs:
+#        - Echo
     :logging:
       :logs:
         :default:

@@ -52,7 +52,7 @@ class InfoService < HookService
   def hook_thyself
     me      = self
 
-    register_command(:list_commands, /[Ii]nfo/, /channel/){|more=nil|
+    register_command(:list_commands, /[Ii]nfo/, [/channel/, /private/]){|more=nil|
                         me.list_commands(bot_version, cmds, hooks, modules, more)
                       }
     

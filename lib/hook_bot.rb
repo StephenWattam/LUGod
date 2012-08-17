@@ -19,6 +19,10 @@ class HookBot
     @cmds           = {}
     @modules        = {}
 
+    # Configure default behaviour during callbacks
+    @defaults                   = {}
+    @defaults[:reply_to]        = @config[:channel]
+
     # then configure
     configure
   end
@@ -194,25 +198,19 @@ class HookBot
     end
   end
 
-  # Kick a user
-  def kick(nick, reason=nil)
-    # TODO: check we're op.
-    @bot.kick @config[:channel], nick, reason
-  end
-
   # Is the bot currently connected?
   def connected?
     @bot.connected?
   end
 
   # Say something to someone
-  def say(msg, nick = @config[:channel])
-    @bot.msg(nick, msg)
+  def say(msg, recipient = @defaults[:reply_to])
+    @bot.msg(recipient, msg)
   end
 
   # Action something.
-  def action(msg, nick = @config[:channel])
-    @bot.action(nick, msg)
+  def action(msg, recipient = @defaults[:reply_to])
+    @bot.action(recipient, msg)
   end
 
   # Close the bot's connection to the server
@@ -316,6 +314,8 @@ private
   # without calling a method
   def prepare_vars(raw_msg, name)
     {:nick          => raw_msg.nick,
+     :recipient     => raw_msg.recipient,
+     :reply_to      => raw_msg.reply_to,
      :message       => raw_msg.message,
      :user          => raw_msg.user,
      :host          => raw_msg.host,
@@ -344,6 +344,9 @@ private
 
     # and the call that runs the hook
     cls.send :define_method, :__hookbot_invoke, block
+
+    # Set default @bot behaviour...
+    @defaults = vars
 
     # then call
     cls.new.__hookbot_invoke(*args)

@@ -269,8 +269,6 @@ module Isaac
       match = @raw.match(/(^:(\S+) )?(\S+)(.*)/)
       _, @prefix, @command, raw_params = match.captures
 
-      #puts "##{@command}"
-
       raw_params.strip!
       if match = raw_params.match(/:(.*)/)
         @params = match.pre_match.split(" ")
@@ -278,6 +276,14 @@ module Isaac
       else
         @params = raw_params.split(" ")
       end
+
+      # puts "MESSAGE: #{self}"
+      # puts " command: #{@command}"
+      # puts "  params: #{@params.join(", ")}"
+      # puts " channel: #{channel}"
+      # puts " recipient: #{recipient}"
+      # puts " reply_to: #{reply_to}"
+      # puts "    nick: #{nick}"
     end
 
     # The nick responsible for the message
@@ -329,6 +335,18 @@ module Isaac
       end
     end
 
+    # Who was this sent to?
+    def recipient
+      return @channel if @channel
+      return params.first if regular_command? 
+    end
+
+    # Who should we reply to in order to keep in kind?
+    def reply_to
+      return @channel if @channel
+      return nick
+    end
+
     # What is the message body?
     def message
       return @message if @message
@@ -342,7 +360,7 @@ module Isaac
     private
     # This is a late night hack. Fix.
     def regular_command?
-      %w(PRIVMSG JOIN PART QUIT).include? command
+      not %w(PING).include? command
     end
   end
 

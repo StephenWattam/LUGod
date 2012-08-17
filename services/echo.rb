@@ -15,7 +15,7 @@ class Echo < HookService
   end
 
   # Respond to a channel message
-  def echo_to_channel( nick, msg )
+  def echo_to_irc( msg )
     $log.debug "Received channel message, echoing..."
     @bot.say( msg ) 
   end
@@ -46,10 +46,13 @@ class Echo < HookService
     register_hook(
                        :echo_chan,                    # Call this hook echo_chan, so we can remove it individually later
                        nil,
-                       /channel/
+                       [/channel/, /private/]
                       ){                              # The block to call
-                        me.echo_to_channel(nick, message)
+                        me.echo_to_irc(message)
                       } 
+
+
+
 
     # Same, but echoes to stdout 
     register_hook(:echo_stdout){
