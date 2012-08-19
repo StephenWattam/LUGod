@@ -38,7 +38,7 @@ class ReminderService < HookService
     end
 
     # Add a reminder without an override
-    add_reminder(from, user, override, msg)
+    add_reminder(bot, from, user, override, msg)
   end
 
   # Listen to !tell, !TELL and any normal messages
@@ -66,7 +66,7 @@ class ReminderService < HookService
 
 private
   # Add a reminder.
-  def add_reminder(from, user, override, message)
+  def add_reminder(bot, from, user, override, message)
     # pre-parse
     to            = user.downcase
     raise "Message too short" if message.length < @config[:min_message_length]
@@ -86,9 +86,9 @@ private
     @reminders[to] << {:time => Time.now, :from => from, :msg => message}
 
     if bumped
-      @bot.say "Reminder added, but I had to delete one from #{bumped[:time].strftime("%m/%d/%Y %I:%M%p")}, here it is: #{bumped[:msg]}"
+      bot.say "Reminder added, but I had to delete one from #{bumped[:time].strftime("%m/%d/%Y %I:%M%p")}, here it is: #{bumped[:msg]}"
     else
-      @bot.say "Done, #{user} now has #{@reminders[to].length} reminder#{(@reminders[to].length == 1) ? '' : 's'}."
+      bot.say "Done, #{user} now has #{@reminders[to].length} reminder#{(@reminders[to].length == 1) ? '' : 's'}."
     end
   end
 
