@@ -23,6 +23,7 @@
     - LogService
     - PingService 
     - InfoService
+    - FortuneService
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
   :logs:                                # A list of places to log to
