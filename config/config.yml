@@ -42,11 +42,12 @@
       :nick: ^LUGod_dbg
       :password:                      # the test nick is not registered
       :verbose: false                  # Enable/disable bot level logging
-    # :hooks:
-    #   :objs:
-    #     # - Echo
-    #     - InfoService
-    #     - ChannelManager
+    :hooks:
+      :objs:
+        - ChannelManager
+        - FortuneService
+    #   - Echo
+    #   - InfoService
     :logging:
       :logs:
         :default:
