@@ -43,17 +43,17 @@ protected
   end
 
   # Remove cmd by name
-  def unregister_commands(*names)
+  def unregister_commands(timeout, *names)
     @hook_manager.unregister_commands(*names)
   end
 
   # Unregister everything by a given module
-  def unregister_modules(*mods)
-    @hook_manager.unregister_modules(*mods)
+  def unregister_modules(timeout, *mods)
+    @hook_manager.unregister_modules(timeout, *mods)
   end
 
-  def unregister_all
-    @hook_manager.unregister_modules(self)
+  def unregister_all(timeout)
+    @hook_manager.unregister_modules(timeout, self)
   end
 
 

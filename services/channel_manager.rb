@@ -14,10 +14,9 @@ class ChannelManager < HookService
     
     # If we are not required to do anything else, unhook
     if @config[:connect_only] then
-      unregister_all
-      # or unregister_hooks(:chanman_connect)
+      unregister_all(0.5) # Give my hooks half a second to disconnect
+      # or unregister_hooks(0.5, :chanman_connect)
     end
-
   end
 
   def hook_thyself

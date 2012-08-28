@@ -207,8 +207,8 @@ rescue SignalException => Se
     }
     
     # Unhook any that didn't unhook themself
-    $log.fatal "Unhooking remaining services..."
-    hook_manager.unregister_all
+    $log.fatal "Unhooking remaining services... (Will wait #{config[:module_thread_timeout]}s)"
+    hook_manager.unregister_all(config[:module_thread_timeout])
    
     # Then d/c bot
     $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s)"
