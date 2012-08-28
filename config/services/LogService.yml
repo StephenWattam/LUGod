@@ -1,6 +1,8 @@
 --- 
 # Storage config
 :database_path:  "data/logs.db"
+:auto_wildcard: true            # If set to true, will automatically wrap *expressions*
+:case_sensitive: false          # If set to false, the script will attempt to rewrite input to be case-insensitive.  May be slow.
 :pragma:
   #"locking_mode": "EXCLUSIVE"
   "cache_size": 20000

@@ -18,7 +18,7 @@ CREATE TABLE "messages" (
 }
 
   def help
-    "Logging service, capable of searching using '!search pattern [nick]', counting using '!count pattern', log-fighting with '!fight p1 p2 ...', and '!seen nick'.  Supports unix glob syntax on all fields."
+    "Logging service, capable of searching using '!search pattern [nick] [offset]', counting using '!count pattern', log-fighting with '!fight p1 p2 ...', and '!seen nick'.  Supports unix glob syntax on all fields.  Case sensitive: #{@config[:case_sensitive]}.  Auto-wildcard: #{@config[:auto_wildcard]}"
   end
 
   # Connect to db
@@ -40,7 +40,7 @@ CREATE TABLE "messages" (
   end
 
   def count(bot, server, channel, what, who)
-    bot.say "I found #{perform_count(server, channel, what, who)} occurrences in the logs." 
+    bot.say "I found #{perform_count(server, channel, auto_wildcard(what), auto_wildcard(who))} occurrences in the logs." 
   end
 
 
@@ -53,7 +53,7 @@ CREATE TABLE "messages" (
     # Ensure they are wildcarded
     items_escaped = []
     items.each{|x|
-      items_escaped << ((x.index('*')) ? x : "*#{x}*")
+      items_escaped << auto_wildcard(x)
     }
 
     # Perform count    
@@ -72,12 +72,12 @@ CREATE TABLE "messages" (
   end
 
 
-  def search(bot, server, channel, what, who)
-    rs, num = perform_search(server, channel, what, who)
+  def search(bot, server, channel, what, who, offset)
+    rs, num = perform_search(server, channel, auto_wildcard(what), auto_wildcard(who), offset)
 
     if rs.length > 0 then 
       # Then output
-      i     = 0
+      i     = offset 
       rs.each{|msginfo|
         time, nick, message = msginfo
         bot.say "#{num - i}/#{num} -- [#{Time.at(time).strftime("%d/%m/%y %H:%M")}] <#{nick}> #{message}"
@@ -126,8 +126,8 @@ CREATE TABLE "messages" (
     register_command(:log_seen, /seen/, [/channel/, /private/]){|who = "*"|
       me.seen(bot, server, channel, nick, who, bot_nick)
     }
-    register_command(:log_hist, /search/, [/channel/, /private/]){|what = "*", who = "*"|
-      me.search(bot, server, channel, what, who)
+    register_command(:log_hist, /search/, [/channel/, /private/]){|what = "*", who = "*", offset = 0|
+      me.search(bot, server, channel, what, who, offset.to_i)
     }
     register_command(:log_count, /count/, [/channel/, /private/]){|what = "*", who = "*"|
       me.count(bot, server, channel, what, who)
@@ -182,6 +182,24 @@ CREATE TABLE "messages" (
 
 private
 
+  def auto_wildcard(expr)
+    expr = "*#{expr}*" if not expr.include?('*') if @config[:auto_wildcard]
+
+    if not @config[:case_sensitive] then
+      str = ""
+      expr.chars.each{|l|
+        if l =~ /[a-zA-Z]/ then
+          str += "[#{l.downcase}#{l.upcase}]"
+        else
+          str += l
+        end
+      }
+      expr = str
+    end
+
+    return expr 
+  end
+
   def perform_count(server, channel, what, who="*")
     # Get a count of everything
     rs = @db.select("messages", "count(*)", 
@@ -191,7 +209,7 @@ private
   end
 
 
-  def perform_search(server, channel, what, who="*")
+  def perform_search(server, channel, what, who="*", offset=0)
     # Quit if we didn't find anything
     num = perform_count(server, channel, what, who)
     return [], 0 if num == 0 
@@ -200,11 +218,7 @@ private
     # Then select actual data
     rs = @db.select("messages", 
                     ["`time`", "`from`", "`message`"], 
-                    "`server` == #{@db.escape(server)} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(channel)} AND glob(#{@db.escape(what)}, message)", "order by `time` desc limit #{@config[:max_results]};");
-
-    #puts "==>"
-    #puts rs.to_s
-    #puts "<=="
+                    "`server` == #{@db.escape(server)} AND glob(#{@db.escape(who)},`from`) AND `to` == #{@db.escape(channel)} AND glob(#{@db.escape(what)}, message)", "order by `time` desc limit #{@config[:max_results]} offset #{offset};");
 
     # Double-check
     return rs, num
