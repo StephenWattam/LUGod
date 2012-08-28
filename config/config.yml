@@ -47,6 +47,7 @@
       :objs:
         - ChannelManager
         - FortuneService
+        # - TitleService
     #   - Echo
     #   - InfoService
     :logging:

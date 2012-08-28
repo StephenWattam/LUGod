@@ -1,7 +1,6 @@
 require 'net/http'
 require 'uri'
-require 'cgi'
-
+require 'htmlentities'
 
 class TitleService < HookService
 
@@ -108,7 +107,7 @@ private
       title.gsub!("\n\r", "")
       title.gsub!(/\s+/, " ")
       title.strip!
-      title = CGI.unescapeHTML(title)
+      title = HTMLEntities.new.decode(title)
     }
 
     return title

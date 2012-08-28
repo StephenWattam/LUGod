@@ -1,6 +1,7 @@
 GEM
   remote: http://rubygems.org/
   specs:
+    htmlentities (4.3.1)
     nokogiri (1.5.5)
     raspell (1.3)
     sqlite3 (1.3.6)
@@ -11,6 +12,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  htmlentities
   raspell
   sqlite3
   wolfram
