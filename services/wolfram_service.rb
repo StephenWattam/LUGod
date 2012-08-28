@@ -4,7 +4,6 @@ require 'wolfram'
 
 class WolframService < HookService
 
-  @version = "0.2"
 
   def initialize(bot, config)
     super(bot, config)

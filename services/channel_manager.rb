@@ -1,10 +1,5 @@
 
-gem 'wolfram'
-require 'wolfram'
-
 class ChannelManager < HookService
-
-  @version = "0.1"
 
 
   def help

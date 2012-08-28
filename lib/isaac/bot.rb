@@ -1,5 +1,6 @@
 require 'socket'
 require 'logger'
+require 'thread'
 
 module Isaac
   VERSION = '0.2.1'
@@ -8,15 +9,15 @@ module Isaac
 
   class Bot
     # Access config properties
-    attr_accessor :config, :irc, :nick, :log, :server
+    attr_accessor :config, :irc, :nick, :log, :server, :action_mutex
 
     # Initialise with a block for caling :on, etc
     def initialize(&b)
-      @config = Config.new("localhost", 6667, false, nil, "isaac", "Isaac", 'isaac', :production, false, Logger.new(nil))
-
+      @config       = Config.new("localhost", 6667, false, nil, "isaac", "Isaac", 'isaac', :production, false, Logger.new(nil))
+      @action_mutex = Mutex.new
       instance_eval(&b) if block_given?
     end
-   
+  
     # Convenience 
     def log
       @config.log
@@ -34,18 +35,24 @@ module Isaac
 
     # Configure by assigning things to the called back object
     def configure(&b)
-      b.call(@config)
-      @config.log = Logger.new(nil) if not @config.verbose
+      @action_mutex.synchronize{
+        b.call(@config)
+        @config.log = Logger.new(nil) if not @config.verbose
+      }
     end
 
     # Add a handler
     def register(&block)
-      log.info "Registered client for hooks"
-      @hook = block
+      @action_mutex.synchronize{
+        log.info "Registering client for hooks"
+        @hook = block
+      }
     end
 
     def unregister
-      @hook = nil
+      @action_mutex.synchronize{
+        @hook = nil
+      }
     end
 
     # Configure further (same as .new)
@@ -55,13 +62,17 @@ module Isaac
 
     # Stop the bot
     def halt
-      throw :halt
+      @action_mutex.synchronize{
+        throw :halt
+      }
     end
 
     # Send raw info to IRC
     def raw(command)
-      log.debug "Sending #{command}"
-      @irc.message(command)
+      @action_mutex.synchronize{
+        log.debug "Sending #{command}"
+        @irc.message(command)
+      }
     end
 
     # Send a message to IRC
@@ -112,47 +123,11 @@ module Isaac
       @irc.connect
     end
 
-    # The current message being parsed
-    def message
-      @message ||= ""
-    end
-
     # Dispatch an event using the hook system
     def dispatch(event, msg=nil)
       return if not @hook
-
-#      if msg
-#        @nick, @user, @host, @channel, @error, @message, @raw_msg = 
-#          msg.nick, msg.user, msg.host, msg.channel, msg.error, msg.message, msg
-#      end
-
-      #invoke(event, msg, @hook)
       @hook.call(event, msg)
     end
-
-  # private
-
-    # # Invoke a callback
-    # # this is really quite cunning
-    # def invoke(type, msg, block)
-    #   mc = class << self; self; end
-    #   mc.send :define_method, :type, Proc.new{|| return type}
-    #   mc.send :define_method, :msg, Proc.new{|| return msg}
-    #   mc.send :define_method, :__isaac_event_handler, &block
-
-    #   # -1  splat arg, send everything
-    #   #  0  no args, send nothing
-    #   #  1  defined number of args, send only those
-    #   bargs = case block.arity <=> 0
-    #     when -1; match
-    #     when 0; match
-    #     when 1; match[0..block.arity-1]
-    #   end
-
-    #   catch(:halt) { 
-    #     __isaac_event_handler(*bargs) 
-    #   }
-    # end
   end
 
   # Handles low-level IRC communications

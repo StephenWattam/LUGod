@@ -1,16 +1,13 @@
 
 
 class Echo < HookService
-
-  @version = "0.2"
-
   def help
     "EchoService echoes.  A lot.  Mainly used for debugging."
   end
 
   # Init and print a nice message
-  def initialize(hooker, config)
-    super(hooker, config)
+  def initialize(hooker, config, true)  # support threading
+    super(hooker, config, true)
     puts "--- ECHO INITIALIZED"
   end
 

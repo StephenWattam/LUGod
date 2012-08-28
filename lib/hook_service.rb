@@ -1,9 +1,10 @@
 
 # Superclass of all hooks
 class HookService
-  def initialize(hook_manager, config)
+  def initialize(hook_manager, config, threaded = false)
+    @threaded     = threaded
     @hook_manager = hook_manager
-    @config = config
+    @config       = config
   end
 
   # Close any module resources.
@@ -18,6 +19,11 @@ class HookService
 
   def help
     "No help available, sorry."
+  end
+
+  # By default, we are not threaded
+  def threaded? 
+    @threaded
   end
     
 protected

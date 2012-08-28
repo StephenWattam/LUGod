@@ -4,7 +4,6 @@ require 'htmlentities'
 
 class TitleService < HookService
 
-  @version = "0.0.2"
 
   # Find URLs
   # Many thanks to http://mathiasbynens.be/demo/url-regex
@@ -14,6 +13,11 @@ class TitleService < HookService
   # check the title makes sense
   TITLE_RX = /<\s*title\s*>(.*)<\s*\/\s*title\s*>/mi
 
+
+  # This service can handle threading.
+  def threaded?
+    true
+  end
 
   def help
     "TitleService looks up HTML titles.  It's a lone wolf, controlled by no man."

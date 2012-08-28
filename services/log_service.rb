@@ -3,7 +3,6 @@ require 'sqlite3'
 
 class LogService < HookService
 
-  @version = "0.2"
 
 SCHEMA = %{
 CREATE TABLE "messages" (
@@ -24,7 +23,7 @@ CREATE TABLE "messages" (
 
   # Connect to db
   def initialize(bot, config)
-    super(bot, config)
+    super(bot, config, false) # NOT thread safe!
 
     # Create the db if not already created
     if not File.exist?(@config[:database_path]) then

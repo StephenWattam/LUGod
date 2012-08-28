@@ -6,14 +6,14 @@ require 'raspell'
 
 class SpellService < HookService
 
-  @version = "0.1"
 
   def help
     "Spell checker using aspell.  Say '!spell word [number]' to get suggestions."
   end 
 
+
   def initialize(bot, config)
-    super(bot, config)
+    super(bot, config, true)  # We can handle threading
     #raise "Please install the 'raspell' gem and aspell tool." if not 
     @spell = Aspell.new(@config[:language])
     @spell.set_option("ignore-case", "true")

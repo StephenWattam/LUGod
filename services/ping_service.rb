@@ -2,8 +2,9 @@
 # Helps users determine if IRC is broken :-)
 
 class PingService < HookService
-
-  @version = "0.2"
+  def threaded?
+    true
+  end
 
   def help
     "Say '!ping' and I will reply with a message.  Handy for checking connections."

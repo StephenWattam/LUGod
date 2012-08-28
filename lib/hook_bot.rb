@@ -8,7 +8,7 @@ require 'shellwords'
 
 module HookBot 
   # Version of Hookbot
-  VERSION = "0.1.0"
+  VERSION = "0.1.5"
 
   # defines the command character and other minor command things
   COMMAND_RX = /^[!]([a-zA-Z0-9]+)(.*)?$/
@@ -115,6 +115,10 @@ module HookBot
 
 
     # Produce a bot object with stateful defaults.
+    #
+    # IMPORTANT: This must remain thread-safe,
+    # since it is the unsafe side of all interactions
+    # between services and the [safe] isaac lib.
     def clone_state(msg)
       cls = Class.new() do
        
@@ -164,15 +168,17 @@ module HookBot
 
   # Manage hooks
   class HookManager
+    
+    # The maximum number of threads each module
+    # may have in a running state at any one time.
+    MAX_MODULE_THREADS = 5
 
     def initialize 
       # Keep track of hooks and what object owns what
       @hooks          = {}
       @cmds           = {}
       @modules        = {}
-
     end
-
 
 
     # Register a command, only invoked when COMMAND_RX is triggered.
@@ -190,7 +196,7 @@ module HookBot
       @cmds[name] = {:types => types, :trigger => trigger, :proc => p, :module => mod}
 
       # register hook or command for a given module
-      @modules[mod] ||= {:hooks => [], :cmds => []}
+      @modules[mod] ||= {:hooks => [], :cmds => [], :threads => [], :threaded => mod.threaded?}
       @modules[mod][:cmds] << name
 
       $log.debug "Registered command '#{name}'"
@@ -213,13 +219,14 @@ module HookBot
       @hooks[name] = {:types => types, :trigger => trigger, :proc => p, :module => mod}
       
       # Register a given hook or command for a give module
-      @modules[mod] ||= {:hooks => [], :cmds => []}
+      @modules[mod] ||= {:hooks => [], :cmds => [], :threads => [], :threaded => mod.threaded?}
       @modules[mod][:hooks] << name
 
       $log.debug "Registered hook '#{name}'"
     end
 
     # Remove hook by name
+    # TODO: consider threads
     def unregister_hooks(*names)
       names.each{|name|
         $log.debug "Unregistering hook: #{name}..."
@@ -232,6 +239,7 @@ module HookBot
     end
 
     # Remove cmd by name
+    # TODO: consider threads
     def unregister_commands(*names)
       names.each{|name|
         $log.debug "Unregistering command: #{name}..."
@@ -244,6 +252,7 @@ module HookBot
     end
 
     # Unregister everything by a given module
+    # TODO: consider threads
     def unregister_modules(*mods)
       mods.each{|mod|
         raise "no modules registed." if not @modules[mod]
@@ -294,26 +303,41 @@ module HookBot
     end
 
 
+    # Kills all old threads for a module
+    def purge_module_threads(mod)
+      mod[:threads].delete_if{|t| 
+        not t.alive?
+      } 
+    end
+
 
     # Dispatch things to hooks
     def dispatch_hooks(msg, type, bot)
       return if @hooks.length == 0
 
       @hooks.each{|name, hook|
-        types, trigger, p = hook[:types], hook[:trigger], hook[:proc]
+        types, trigger, p, mod = hook[:types], hook[:trigger], hook[:proc], @modules[hook[:module]]
+
+        # Go through and kill any old threads,
+        purge_module_threads(mod)
+
+        # If the module is not threaded, we must find the current
+        # thread in order to let it finish before starting a new one
+        thread_to_await = mod[:threads][0] if not mod[:threaded]
 
         # Check types match the rx
         types.each{|type_trigger|
           if type_trigger.match(type) then
 
-            $log.debug "Inspecting hook '#{name}' [#{trigger.call(msg)}]"
+            $log.debug "Inspecting hook '#{name}' for module #{mod.class} (threaded? #{mod[:threaded]}) [#{trigger.call(msg)}]"
             begin
               # Check the hook trigger works if it's of the right type
               if(trigger.call(msg)) then
                 # Then invoke
+                raise "Too many active threads for module: #{mod[:name]}." if mod[:threads].length > MAX_MODULE_THREADS
                 $log.debug "Dispatching hook '#{name}'..."
-                invoke(prepare_vars(bot, msg, name), p)
-                $log.debug "Finished running hook #{name}."
+                mod[:threads] << invoke(prepare_vars(bot, msg, name), p, [], thread_to_await)
+                $log.debug "Running hook #{name}: #{mod[:threads].length}/#{MAX_MODULE_THREADS} threads."
               end
             rescue Exception => e
               bot.say("Error in #{name}: #{e}")
@@ -352,7 +376,14 @@ module HookBot
       # similar to dispatch_hooks, perhaps TODO merge, but
       # for now it varies due to the call.
       @cmds.each{|name, hook|
-        types, trigger, p = hook[:types], hook[:trigger], hook[:proc]
+        types, trigger, p, mod = hook[:types], hook[:trigger], hook[:proc], @modules[hook[:module]]
+
+        # Go through and kill any old threads,
+        purge_module_threads(mod)
+
+        # If the module is not threaded, we must find the current
+        # thread in order to let it finish before starting a new one
+        thread_to_await = mod[:threads][0] if not mod[:threaded]
 
         # Check the type of message it's subscribing to
         types.each{|type_trigger|
@@ -361,10 +392,11 @@ module HookBot
             # Then check command trigger
             if(cmd =~ trigger) then
               begin
+                raise "Too many active threads for module: #{mod[:name]}." if mod[:threads].length > MAX_MODULE_THREADS
                 $log.debug "Arity of block: #{p.arity}, args: #{args.length}"
                 $log.debug "Dispatching command hook #{name} for #{cmd}..."
-                invoke(prepare_vars(bot, msg, name), p, args)
-                $log.debug "Finished processing command hook #{name}."
+                mod[:threads] << invoke(prepare_vars(bot, msg, name), p, args, thread_to_await)
+                $log.debug "Running command hook #{name}: #{mod[:threads].length}/#{MAX_MODULE_THREADS} threads."
               rescue Exception => e
                 bot.say("Error in #{name}: #{e}")
                 $log.error "Error in callback for command: #{cmd} => #{e}"
@@ -408,19 +440,29 @@ module HookBot
     end
 
     # Invoke something with certain vars set.
-    def invoke(vars, block, args=[])
+    def invoke(vars, block, args=[], thread_to_await=nil)
+      # Construct a new class
       cls = Class.new 
 
       # Set up pre-defined variables
       vars.each{|n, v|
         cls.send :define_method, n.to_sym, Proc.new{|| return v} 
       }
-
       # and the call that runs the hook
       cls.send :define_method, :__hookbot_invoke, block
 
-      # then call
-      cls.new.__hookbot_invoke(*args)
+      # then call, in a thread, waiting for any old threads
+      # should we have been passed one
+      return Thread.new(thread_to_await, cls, args){ |thread_to_await, cls, args|
+        thread_to_await.join if thread_to_await and thread_to_await.is_a(Thread) and thread_to_await.alive?
+
+        begin
+          cls.new.__hookbot_invoke(*args)
+        rescue Exception => e
+          puts "\n\n: #{e}"
+          puts "\n\n: #{e.backtrace.join("\n")}"
+        end
+      }
     end
 
   end

@@ -5,7 +5,11 @@
 
 class FortuneService < HookService
 
-  @version = "0.1"
+
+  # We can handle threading...
+  def threaded?
+    true
+  end
 
   def help
     "Tells fortunes.  use '!8ball [question]' to ask a question, or '!fortune' for a conventional unix fortune."

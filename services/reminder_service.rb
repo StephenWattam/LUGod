@@ -7,14 +7,13 @@ require 'raspell'
 
 class ReminderService < HookService
 
-  @version = "0.1"
 
   def help
     "Set reminders for folks.  Use '!tell nick message' to set a reminder, they'll get it when they next say something."
   end
 
   def initialize(bot, config)
-    super(bot, config)
+    super(bot, config, false) # not threaded
     @reminders = PersistentHash.new(@config[:storage_path], true)
     @reminders.save(true)
   end

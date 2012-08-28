@@ -1,9 +1,6 @@
 
 class InfoService < HookService
 
-  # Increment me when editing
-  @version = "0.0.1"
-
   def help
     "Provides info on the bot and its services.  Use !info to list modules, and '!help ModuleName' to get help."
   end
@@ -15,7 +12,7 @@ class InfoService < HookService
       hooks, cmds = list.values
 
       if more then
-        "#{m.class}(#{cmds.length}c#{hooks.length}h)"
+        "#{m.class}(#{cmds.length}cb, #{hooks.length}hk#{(m.threaded?) ? ', threaded':''})"
       else
         "#{m.class}"
       end
