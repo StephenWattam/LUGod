@@ -139,6 +139,10 @@ module HookBot
           @bot.join(channel)
         end
 
+        def connected?
+          @bot.connected?
+        end
+
         def say(msg, recipient = nil)
           recipient ||= @msg.reply_to if @msg
           @bot.msg(recipient, msg)

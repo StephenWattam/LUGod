@@ -52,6 +52,7 @@
         - TitleService
         # - Echo
         - InfoService
+        - GTalkBridgeService
     :logging:
       :logs:
         :default:
