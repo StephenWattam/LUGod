@@ -219,4 +219,7 @@ rescue SignalException => Se
 end
 
 $log.info "Goodbye!"
-exit(0)
+# don't call at_exit hooks.  
+# This prevents services from taking over the execution context,
+# here's looking at you, EventMachine.
+exit!(0)    

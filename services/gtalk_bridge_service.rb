@@ -118,12 +118,10 @@ module JabberBridge
       @bot = bot
 
       # Run the thing.
-      $log.info "Connecting to XMPP"
+      $log.info "Connecting to Gtalk..."
       EM.run do
         @client.run
       end
-      $log.info "Connected to XMPP ( #{EventMachine::reactor_running?} )"
-      EventMachine::stop_event_loop() if EventMachine::reactor_running?
     end
 
     def handle_message(source, user, message)
@@ -166,7 +164,9 @@ module JabberBridge
     end
 
     def disconnect
+      $log.info "Disconnecting from GTalk..."
       @client.close if connected?
+      EventMachine::stop_event_loop() if EventMachine::reactor_running?
     end
 
 
@@ -370,6 +370,8 @@ class GTalkBridgeService < HookService
   # No need to unhook, the bot will do it.
   def close
     @xmpp.disconnect
+
+
   end
 
 
