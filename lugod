@@ -200,6 +200,12 @@ rescue SignalException => Se
   $log.fatal "Caught signal!"
   if defined? bot and bot.connected? then
 
+    # Then d/c bot
+    $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s before killing services)"
+    bot.disconnect("Caught signal.", BOT_DC_TIMEOUT)
+    $log.fatal "Done."
+
+
     # Close all services once and for all.
     services.each{|s|
       $log.fatal "Closing Service #{s.class}..."
@@ -209,16 +215,6 @@ rescue SignalException => Se
     # Unhook any that didn't unhook themself
     $log.fatal "Unhooking remaining services... (Will wait #{config[:module_thread_timeout]}s)"
     hook_manager.unregister_all(config[:module_thread_timeout])
-   
-    # Then d/c bot
-    $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s)"
-    begin
-      Timeout::timeout(BOT_DC_TIMEOUT){
-        bot.disconnect("Caught signal.")
-      }
-    rescue Timeout::Error => TMe
-    end
-    $log.fatal "Done."
   end
 end
 

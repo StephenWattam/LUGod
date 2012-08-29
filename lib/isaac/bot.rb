@@ -64,12 +64,6 @@ module Isaac
       instance_eval(&b)
     end
 
-    # Stop the bot
-    def halt
-      @action_mutex.synchronize{
-        throw :halt
-      }
-    end
 
     # Send raw info to IRC
     def raw(command)

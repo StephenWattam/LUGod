@@ -85,11 +85,13 @@ module JabberBridge
       @subscriptions.each{|jid, nick| $log.debug "#{jid} as #{nick}"}
 
       @client = Blather::Client.setup(@config[:id], @config[:pw])
-      @thread = nil
     end
 
     # Start xmpp polling
     def connect( bot )
+      # Kill any old instances we have running
+      @client = Blather::Client.setup(@config[:id], @config[:pw])
+
       # Configure subscription acceptance
       @client.register_handler(:subscription, :request?)do |s|
         begin
@@ -116,11 +118,12 @@ module JabberBridge
       @bot = bot
 
       # Run the thing.
-      @thread = Thread.new do
-        EM.run do
-          @client.run
-        end
+      $log.info "Connecting to XMPP"
+      EM.run do
+        @client.run
       end
+      $log.info "Connected to XMPP ( #{EventMachine::reactor_running?} )"
+      EventMachine::stop_event_loop() if EventMachine::reactor_running?
     end
 
     def handle_message(source, user, message)
@@ -343,7 +346,7 @@ module JabberBridge
     end
 
     def say(jid, message)
-      @client.write Blather::Stanza::Message.new(jid, message)
+      @client.write(Blather::Stanza::Message.new(jid, message))
     end
   end
 
@@ -395,11 +398,13 @@ class GTalkBridgeService < HookService
     end
 
     # Send to XMPP folk
+    return if not @xmpp.connected?
     @xmpp.handle_message(:irc, who, what)
   end
 
   # List users on the bridge
   def xmpp_users( bot )
+    return if not @xmpp.connected?
     bot.say("Users on XMPP: #{@xmpp.get_user_list.join(", ")}")
   end
 

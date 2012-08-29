@@ -103,12 +103,10 @@ module HookBot
 
 
     # Close the bot's connection to the server
-    def disconnect(reason = nil)
-      # Stop the bot processing anything
-      #@bot.halt
-      
-      # Quit
+    def disconnect(reason = nil, timeout = 5)
+      # Quit and wait for replies from server
       @bot.quit(reason)
+      sleep(timeout)
     end
 
 

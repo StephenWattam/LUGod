@@ -1,7 +1,7 @@
 ---
 :xmpp:
   :id: lucsbridge@gmail.com
-  :pw: redacted.
+  :pw: redacted 
   :name: lucsbridge
   :resource: daemon
   :port: 5222
