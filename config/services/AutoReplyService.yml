@@ -1,0 +1,4 @@
+---
+:replies:
+  "^ls$": ". .."
+  "^[Pp]ing$": "Pong"
