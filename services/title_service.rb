@@ -115,10 +115,10 @@ module LinkInfoLookup
 
       # I am suspicious these are always nil.
       title       = info["title"]
-      caption     = info["caption"]
+      # caption     = info["caption"]
       time        = Time.parse(info["datetime"])
       views       = info["views"]
-      bandwidth   = info["bandwidth"]
+      # bandwidth   = info["bandwidth"]
       animated    = info["animated"] == "true"
       dimensions  = "#{info["width"]}x#{info["height"]}"
 
@@ -126,10 +126,10 @@ module LinkInfoLookup
       # This will fail if the link is direct, but fret not.
       if not title and @config[:lookup_titles] then
         rq = TitleRequester.new({:template => "%s", :max_redirects => @config[:max_redirects]}, @uri)
-        title = rq.format_output.to_s.gsub(/- Imgur$/, '') if rq.request
+        title = rq.format_output.to_s.gsub(/- Imgur$/, '').strip if rq.request
       end
 
-      @result     = "#{(title.to_s.length > @config[:min_title_length]) ? title : 'Info'}: posted #{time.ago_in_words}, #{dimensions}#{animated ? ', animated' : ''}, #{views} views."
+      @result     = "#{(title.to_s.length > @config[:min_title_length]) ? title : ''}: posted #{time.ago_in_words}, #{dimensions}#{animated ? ', animated' : ''}, #{views} views."
       return true
     rescue Exception => e
       $log.error "Exception looking up title: #{e}"
