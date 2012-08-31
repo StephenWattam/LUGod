@@ -5,4 +5,4 @@ gem "wolfram"           # WolframService, deprecated
 gem "htmlentities"      # TitleService
 gem "blather"           # GTalkService
 gem "json"              # TitleService
-gem "time-ago-in-words" # TitleService
+gem "time-ago-in-words" # TitleService, LogService

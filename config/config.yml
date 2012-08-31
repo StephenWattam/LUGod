@@ -48,7 +48,7 @@
       :verbose: false                  # Enable/disable bot level logging
     :hooks:
       :objs:
-        # - LogService
+        - LogService
         - ChannelManager
         # - AutoReplyService
         # - FortuneService

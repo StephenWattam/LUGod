@@ -1,5 +1,7 @@
 
 require 'sqlite3'
+require 'time'
+require 'time-ago-in-words'
 
 class LogService < HookService
 
@@ -110,11 +112,12 @@ CREATE TABLE "messages" (
 
     # Then output handy stuff.
     if rs.length == 0 then
-      bot.say "I have never seen #{who}."
+      bot.say "I have never seen #{who} in this channel."
       return
     else
       time = rs.flatten[0].to_i
-      bot.say "Last message from #{who}: #{Time.at(time).strftime("%A %B %d, %H:%M:%S")}"
+      time = Time.at(time)
+      bot.say "Last message from #{who}: #{time.ago_in_words} at #{time.strftime("%A %B %d, %H:%M:%S")}."
     end
   end
 
