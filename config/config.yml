@@ -50,9 +50,9 @@
       :objs:
         # - LogService
         - ChannelManager
-        - AutoReplyService
+        # - AutoReplyService
         # - FortuneService
-        # - TitleService
+        - TitleService
         # - Echo
         # - InfoService
         # - GTalkBridgeService

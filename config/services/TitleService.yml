@@ -1,7 +1,21 @@
 ---
 :max_urls_per_msg: 5
-:min_title_length: 5
-:max_title_length: 200
-:max_redirects: 5
-:title_template: "Title: %s"
-:title_multiple_template: "Title %i/%i: %s"
+:max_info_length: 200
+:min_info_length: 5
+# Templates for global output (1 per message)
+:info_template: "%s"
+:info_multiple_template: "%i/%i: %s"
+
+:requesters:                                                  # FIRST MATCH policy: put more niche things higher up
+  '^https?://([a-z]+\.)?imgur.com/.+': ImgurRequester
+  '^https?://.*': TitleRequester
+
+
+:TitleRequester:
+  :max_redirects: 5         # Follow 5 redirects
+  :template: "Title: %s"    # The prefix used when outputting.
+:ImgurRequester:
+  :min_title_length: 5      # Check the title is over n chars
+  :lookup_titles: true      # Should we fall back to using TitleRequester to look up the title?
+  :max_redirects: 5         # Used when looking up the title of images conventionally, rather than via the api
+  :template: "Imgur: %s"    # The way to tell people the service was used

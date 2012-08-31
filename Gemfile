@@ -1,6 +1,8 @@
 source "http://rubygems.org"
-gem "raspell"
-gem "sqlite3"
-gem "wolfram"
-gem "htmlentities"
-gem "blather"
+gem "raspell"           # ASpellService
+gem "sqlite3"           # LogService
+gem "wolfram"           # WolframService, deprecated
+gem "htmlentities"      # TitleService
+gem "blather"           # GTalkService
+gem "json"              # TitleService
+gem "time-ago-in-words" # TitleService
