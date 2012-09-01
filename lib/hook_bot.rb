@@ -466,11 +466,10 @@ module HookBot
                   # Then invoke
                   raise "Too many active threads for module: #{mod_info[:name]}." if mod_info[:threads].length > MAX_MODULE_THREADS
                   $log.debug "Dispatching hook '#{name}'..."
-                  mod_info[:threads] << invoke(prepare_vars(bot, msg, name), p, [], thread_to_await)
+                  mod_info[:threads] << invoke(bot, prepare_vars(bot, msg, name), p, [], thread_to_await)
                   $log.debug "Running hook #{name}: #{mod_info[:threads].length}/#{MAX_MODULE_THREADS} threads."
                 end
               rescue Exception => e
-                bot.say("Error in #{name}: #{e}")
                 $log.error "Error in callback '#{name}' => #{e}"
                 $log.debug "Backtrace: #{e.backtrace.join("\n")}"
               end
@@ -526,10 +525,9 @@ module HookBot
                   raise "Too many active threads for module: #{mod_info[:name]}." if mod_info[:threads].length > MAX_MODULE_THREADS
                   $log.debug "Arity of block: #{p.arity}, args: #{args.length}"
                   $log.debug "Dispatching command hook #{name} for #{cmd}..."
-                  mod_info[:threads] << invoke(prepare_vars(bot, msg, name), p, args, thread_to_await)
+                  mod_info[:threads] << invoke(bot, prepare_vars(bot, msg, name), p, args, thread_to_await)
                   $log.debug "Running command hook #{name}: #{mod_info[:threads].length}/#{MAX_MODULE_THREADS} threads."
                 rescue Exception => e
-                  bot.say("Error in #{name}: #{e}")
                   $log.error "Error in callback for command: #{cmd} => #{e}"
                   $log.debug "Backtrace: #{e.backtrace.join("\n")}"
                 end
@@ -573,7 +571,7 @@ module HookBot
 
 
     # Invoke something with certain vars set.
-    def invoke(vars, block, args=[], thread_to_await=nil)
+    def invoke(bot, vars, block, args=[], thread_to_await=nil)
       # Construct a new class
       cls = Class.new 
 
@@ -592,6 +590,7 @@ module HookBot
         begin
           cls.new.__hookbot_invoke(*args)
         rescue Exception => e
+          bot.say("Error: #{e}") 
           $log.error "Error in callback thread: #{e}"
           $log.debug "#{e.backtrace.join("\n")}"
         end

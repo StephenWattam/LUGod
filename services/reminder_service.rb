@@ -30,7 +30,7 @@ class ReminderService < HookService
     # Check for matches
     matched = false
     @reminders.each{ |who, rem|
-      if not matched and rem and rem.length > 0 and dcnick =~ Regexp.new(who) then
+      if not matched and rem and rem.length > 0 and dcnick =~ who then
         matched = rem
       end
     }
@@ -91,7 +91,9 @@ private
   # Add a reminder.
   def add_reminder(bot, from, user, override, message)
     # pre-parse
-    to            = user.downcase
+    raise "Nick pattern too long"   if user.length > @config[:max_nick_length] 
+    raise "Nick pattern too short"  if user.length < @config[:min_nick_length]
+    to = Regexp.new(/^#{user.downcase}$/)
     raise "Message too short" if message.length < @config[:min_message_length]
 
     # ensure the list exists

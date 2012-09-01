@@ -370,8 +370,6 @@ class GTalkBridgeService < HookService
   # No need to unhook, the bot will do it.
   def close
     @xmpp.disconnect
-
-
   end
 
 
