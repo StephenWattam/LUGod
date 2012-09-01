@@ -1,18 +1,27 @@
+require 'set'
 
 class ChannelManager < HookService
 
+  # Make channels accessible to other modules 
   attr_reader :channels
 
+  # Constructor
   def initialize(hook_manager, config, threaded = false)
     super(hook_manager, config, threaded)
-    @channels = []
+    @channels = Set.new   # And create empty set
   end
 
+
+  # Describe ones'self!
   def help
-    "Ensures the bot sits in some channels"
+    "Ensures the bot sits in some channels (currently in #{@channels.length} channel#{(@channels.length == 1) ? '' : 's'})."
   end
 
-  # Join all channels when first connecting
+
+  # Called when first connected.
+  #
+  # Join all channels when first connecting.
+  # This fires off join_channel, which does the rest of the work
   def join_on_connect(bot)
     @config[:channels].each{|chan|
       join_channel( bot, chan )
@@ -25,6 +34,11 @@ class ChannelManager < HookService
     end
   end
 
+
+  # Called when successfully joining a channel.
+  #
+  # This removes its own callback, and adds more to keep track of membership
+  # of the channel (for reconnecting)
   def join(chan)
     # First, stop listening for this event
     unregister_hooks("chan_join_#{chan}".to_sym)
@@ -42,7 +56,9 @@ class ChannelManager < HookService
     }
   end
 
-  # Part the channel
+  # Called when parted or kicked from a channel.
+  #
+  # This removes its own callbacks, and reconnects if configured to do so.
   def part(bot, chan)
     # Leave
     @channels.delete(chan)
@@ -58,6 +74,7 @@ class ChannelManager < HookService
   end
 
 
+  # Sets up initial connect hooks
   def hook_thyself
     me    = self
 
@@ -68,9 +85,12 @@ class ChannelManager < HookService
   end
 
 
-
 private
 
+  # Joins a channel.
+  # 
+  # This does so by lodging a callback listening for the channel on any JOIN
+  # messages, and then tells the bot to request joining a channel.
   def join_channel( bot, chan )
     # Join the channel
     bot.join( chan )

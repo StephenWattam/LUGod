@@ -1,6 +1,6 @@
 ---
-:connect_only: false   # if true channelmanager will not try to ensure the bot rejoins channels it is kicked from.
-:rejoin_timeout: 0.5    # Time to wait before reconnecting
-:channels:
+:connect_only: false        # If false, will reconnect to channels when kicked.  Setting to 'true' may improve performance.
+:rejoin_timeout: 0.5        # Time to wait before reconnecting
+:channels:                  # Channels to connect to.
   - ! '#lucs'
   - ! '#lucs-dev'
