@@ -2,33 +2,49 @@
 
 require 'rubygems'
 require 'raspell'
-
+require 'time-ago-in-words'
 
 
 class ReminderService < HookService
 
 
+  # Describe the service
   def help
-    "Set reminders for folks.  Use '!tell nick message' to set a reminder, they'll get it when they next say something."
+    "Set reminders for folks.  Use '!tell nick message' to set a reminder, they'll get it when they next say something.  Use regex to match people with variant nicks."
   end
 
+
+  # Open up a reminder store
   def initialize(bot, config)
     super(bot, config, false) # not threaded
     @reminders = PersistentHash.new(@config[:storage_path], true)
     @reminders.save(true)
   end
 
+
   # Monitor conversation to see if someone's said something.
   def monitor( bot, nick )
+    # Lowercase for matching
     dcnick = nick.downcase
-    return if not @reminders[dcnick] or @reminders[dcnick].length == 0
 
-    while( @reminders[dcnick].length > 0 ) do
-      r = @reminders[dcnick].pop
-      bot.say( "[#{r[:time].strftime("%m/%d/%Y %I:%M%p")}] #{r[:from]} (for #{nick}) : #{r[:msg]}" )
+    # Check for matches
+    matched = false
+    @reminders.each{ |who, rem|
+      if not matched and rem and rem.length > 0 and dcnick =~ Regexp.new(who) then
+        matched = rem
+      end
+    }
+    return if not matched
+
+    # Then output all the messages in reverse order
+    while( matched.length > 0 ) do
+      r = matched.pop
+      bot.say( "[#{r[:time].ago_in_words}] #{r[:from]} (for #{nick}) : #{r[:msg]}" )
+              # strftime("%m/%d/%Y %I:%M%p")}] 
     end
   end
   
+
   # Normal method for registering a message
   def tell(bot, from, user = nil, msg = nil, override=false)
     if not user then
@@ -40,30 +56,38 @@ class ReminderService < HookService
     add_reminder(bot, from, user, override, msg)
   end
 
+
   # Listen to !tell, !TELL and any normal messages
   def hook_thyself
     me = self
 
+    # Monitor communications to see if anyone has said stuff yet.
     register_hook(:tell, nil, [/channel/, /private/]){ 
       me.monitor(bot, nick)
     }
 
+    # Add something to tell someone
     register_command(:tell_cmd, /^tell$/, [/channel/, /private/]){|who = nil, *args| 
       me.tell(bot, nick, who, args.join(" "), false)
     }
 
+    # Add something to tell someone, but override the limit
     register_command(:tell_override_cmd, /^TELL$/, [/channel/, /private/]){|who = nil, *args|
       me.tell(bot, nick, who, args.join(" "), true)
     }
   end
  
+
   # Close resources: write reminder file to disk
   def close
     super # unhook bot
     @reminders.save(true)
   end
 
+
 private
+
+
   # Add a reminder.
   def add_reminder(bot, from, user, override, message)
     # pre-parse

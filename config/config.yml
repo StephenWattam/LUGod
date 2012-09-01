@@ -48,12 +48,13 @@
       :verbose: false                  # Enable/disable bot level logging
     :hooks:
       :objs:
-        - LogService
+        # - LogService
         - ChannelManager
         # - AutoReplyService
         # - FortuneService
-        - TitleService
+        # - TitleService
         - InfoService
+        - ReminderService 
         # - Echo
         # - InfoService
         # - GTalkBridgeService
