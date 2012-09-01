@@ -54,6 +54,8 @@ class ReminderService < HookService
 
     # Add a reminder without an override
     add_reminder(bot, from, user, override, msg)
+  rescue Exception => e
+    bot.say "Error: #{e}"
   end
 
 
@@ -115,6 +117,7 @@ private
     else
       bot.say "Done, #{user} now has #{@reminders[to].length} reminder#{(@reminders[to].length == 1) ? '' : 's'}."
     end
+
   end
 
 end
