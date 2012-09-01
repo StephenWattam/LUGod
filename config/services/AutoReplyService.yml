@@ -1,4 +1,4 @@
 ---
-:replies:
+:replies:                 # If the regex in the key matches, the string in the value is said.
   "^ls$": ". .."
   "^[Pp]ing$": "Pong"

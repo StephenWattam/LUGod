@@ -6,8 +6,17 @@ require 'time'
 require 'time-ago-in-words'
 
 
+# This module contains all the info lookup systems
+#
+# Each class within it is a possible option for requesting data from a URI
 module LinkInfoLookup
+
+  # Basic superclass for requesting info from a URI
   class Requester 
+
+    # Create using a config (must contain:
+    #   :template       => A string with one "%s" for the output
+    # and a uri to look up
     def initialize(config, uri)
       @config   = config || {}
       @uri      = (uri.is_a?(URI)) ? uri : URI.parse(uri)
@@ -18,10 +27,13 @@ module LinkInfoLookup
     def request
     end
 
+    # Return the result
     def result
       @result || nil 
     end
 
+    # Return a formatted version using the template
+    # This should be used for all output to IRC
     def format_output
       return "No Results!" if not @result
       return @config[:template] % @result 
@@ -30,13 +42,21 @@ module LinkInfoLookup
 
 
 
-  # Look up the title of an HTTP request
+  # Look up the title tag of a HTML page.
+  #
+  # This class checks to ensure that the URI given is of the 
+  # correct MIME type before returning, and will fail to 
+  # request if given an image or some other thing.
   class TitleRequester < Requester  
-    # Check the content type is HTML before looking for titles
+
+    # This defines the allowed content-types
+    # should match text/html, with some variation
     CONTENT_RX = /.*\/html(;|$)/i
-    # check the title makes sense
+
+    # Used to match the content of the title element.
     TITLE_RX = /<\s*title\s*>(.*)<\s*\/\s*title\s*>/mi
 
+    # Looks up the title from a page
     def request
       $log.debug "Looking up URI: #{@uri}"
 
@@ -47,7 +67,7 @@ module LinkInfoLookup
       client = Net::HTTP.new(@uri.host, @uri.port)
       client.use_ssl = true if @uri.scheme.downcase == "https"
       client.start{|http|
-        # normailise path
+        # normalise path
         # clone and delete host info, then recombobulate
         path = @uri.clone
         %w{scheme userinfo host port registry}.each{|x| eval("path.#{x} = nil") }
@@ -74,6 +94,7 @@ module LinkInfoLookup
         # found title?
         return nil if not body.to_s =~ TITLE_RX
 
+        # Sanitise output
         title = $1
         $log.debug "Looked up title: '#{title}'"
         title.gsub!("\n\r", "")
@@ -82,6 +103,7 @@ module LinkInfoLookup
         title = HTMLEntities.new.decode(title)
       }
 
+      # Store and say we succeeded
       @result = title
       return true
     rescue Exception => e
@@ -91,15 +113,23 @@ module LinkInfoLookup
     end
   end
 
+
+  # Requests information about Imgur images when passed
+  # a link including an imgur 5-character alphanumeric hash
+  #
+  # This uses the imgur API, and so can return richer data
+  # than a generic lookup, but can be slower for it.
   class ImgurRequester < TitleRequester # TODO
 
+    # Looks up imgur info
     def request
 
-      # Find the imgur image hash
+      # Find the imgur image hash from the URI given in the constructor
       image_hash = nil
       if @uri.path =~ /(\/gallery)?\/([a-zA-Z0-9]{5})(\.[a-zA-Z]{1,7})?$/ then
         image_hash = $2
       else
+        # none found, not an imgur URI so return blank
         return nil
       end
 
@@ -129,6 +159,7 @@ module LinkInfoLookup
         title = rq.format_output.to_s.gsub(/- Imgur$/, '').strip if rq.request
       end
 
+      # Return a nicely formatted string with the info in it
       @result     = "#{(title.to_s.length > @config[:min_title_length]) ? title : ''}: posted #{time.ago_in_words}, #{dimensions}#{animated ? ', animated' : ''}, #{views} views."
       return true
     rescue Exception => e
@@ -148,7 +179,10 @@ end
 class TitleService < HookService
 
 
-  # Find URLs
+  # Filter to find things with URLs in.
+  #
+  # This is a faster method than using URI.extract, which is the actual
+  # method used later on
   # Many thanks to http://mathiasbynens.be/demo/url-regex
   URL_RX = /\b((https?):\/\/(-\.)?([^\s\/?\.\#-]+\.?)+(\/[^\s]*)?)\b/
 
@@ -158,11 +192,20 @@ class TitleService < HookService
     true
   end
 
+
+  # Describes the service
   def help
     "TitleService looks up HTML titles.  It's a lone wolf, controlled by no man."
   end
 
 
+  # Called on every channel message.
+  #
+  # This checks for all URIs, loops through them calling appropriate
+  # Requester objects, and outputs the result.
+  #
+  # Which requester objects are used for which URIs is set in the config file
+  # and is based on regex rules.
   def check_link( bot, message )
     uris = URI.extract(message, ["http", "https"]).uniq
     $log.debug "Found #{uris.length} URLs in message."
@@ -173,14 +216,15 @@ class TitleService < HookService
       return
     end
 
+    # Create a requester object for each item in the list
+    # and populate it with its URI
     requesters = []
     uris.each{|raw_uri|
 
-      # Create a requester object for every item in the list.
+      # this is used to jump out after the first match.
       requested = false
       @config[:requesters].each{|k, v|
 
-        puts "===> #{raw_uri} =~ #{k} ? [#{raw_uri =~ Regexp.new(k)}]"
         if (not requested) and raw_uri =~ Regexp.new(k) then # match first hit only
           requesters << eval("LinkInfoLookup::#{v}.new(@config[:#{v}], raw_uri)") 
           # stop looking once we've found one
@@ -189,10 +233,8 @@ class TitleService < HookService
       }
     }
 
-
     # Make requests and delete the ones that fail entirely
     requesters.delete_if{|r| not r.request }
-
 
     # Now make each one format its output by grouping them all together
     if requesters.length > 1 then
@@ -205,6 +247,10 @@ class TitleService < HookService
     end
   end
 
+
+  # Sets up hooks to watch every message matching URL_RX.
+  #
+  # This is a fast way of seeing which messages have URIs in them
   def hook_thyself
     me      = self
     trigger = lambda{|raw|

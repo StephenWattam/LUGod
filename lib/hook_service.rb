@@ -52,9 +52,8 @@ protected
     @hook_manager.unregister_modules(timeout, *mods)
   end
 
+  # Unregister all by this module.
   def unregister_all(timeout)
     @hook_manager.unregister_modules(timeout, self)
   end
-
-
 end 

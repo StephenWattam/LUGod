@@ -1,16 +1,20 @@
 ---
-:max_urls_per_msg: 5
-:max_info_length: 200
-:min_info_length: 5
+:max_urls_per_msg: 5                          # Do not output if more than this number of URLs per message is seen
+:max_info_length: 200                         # Max length for any requester's output
+:min_info_length: 5                           # Minimum length for any requester's output
+                                              
 # Templates for global output (1 per message)
 :info_template: "%s"
 :info_multiple_template: "%i/%i: %s"
 
-:requesters:                                                  # FIRST MATCH policy: put more niche things higher up
+# Requesters.  If the regex in the key matches, the requester object in the value will be used to get info
+# This is done on a first match policy.  Put highest specificity first.
+:requesters:                                                  
   '^https?://([a-z]+\.)?imgur.com/.+': ImgurRequester
   '^https?://.*': TitleRequester
 
-
+# Configuration for each requester type
+# Each requester MUST have a template, but this is the only restriction
 :TitleRequester:
   :max_redirects: 5         # Follow 5 redirects
   :template: "Title: %s"    # The prefix used when outputting.
