@@ -48,11 +48,11 @@ class InfoService < HookService
   def hook_thyself
     me      = self
 
-    register_command(:list_commands, /[Ii]nfo/, [/channel/, /private/]){|more=nil|
+    register_command(:list_commands, /^[Ii]nfo$/, [/channel/, /private/]){|more=nil|
                         me.list_commands(bot, cmds, hooks, modules, more)
                       }
     
-    register_command(:help_module, /[Hh]elp/, [/channel/, /private/]){|mod = nil|
+    register_command(:help_module, /^[Hh]elp$/, [/channel/, /private/]){|mod = nil|
                         if mod then
                           me.module_help(bot, modules, mod)
                         else

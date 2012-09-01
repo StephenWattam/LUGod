@@ -31,11 +31,11 @@ class FortuneService < HookService
   def hook_thyself
     me = self
 
-    register_command(:fortune, /[Ff]ortune/, /channel/){ 
+    register_command(:fortune, /^[Ff]ortune$/, /channel/){ 
       me.fortune(bot)
     }
 
-    register_command(:eight_ball, /8(ball)?$/, /channel/){|*msg|
+    register_command(:eight_ball, /^8(ball)?$/, /channel/){|*msg|
       me.eight_ball(bot, msg.join(" "))
     }
   end

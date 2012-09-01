@@ -126,16 +126,16 @@ CREATE TABLE "messages" (
     me      = self
     # TODO: Hook *everything*
 
-    register_command(:log_seen, /seen/, [/channel/, /private/]){|who = "*"|
+    register_command(:log_seen, /^[Ss]een$/, [/channel/, /private/]){|who = "*"|
       me.seen(bot, server, channel, nick, who, bot_nick)
     }
-    register_command(:log_hist, /search/, [/channel/, /private/]){|what = "*", who = "*", offset = 0|
+    register_command(:log_hist, /^[Ss]earch$/, [/channel/, /private/]){|what = "*", who = "*", offset = 0|
       me.search(bot, server, channel, what, who, offset.to_i)
     }
-    register_command(:log_count, /count/, [/channel/, /private/]){|what = "*", who = "*"|
+    register_command(:log_count, /^[Cc]ount$/, [/channel/, /private/]){|what = "*", who = "*"|
       me.count(bot, server, channel, what, who)
     }
-    register_command(:log_fight, /fight/, /channel/){|*whats|
+    register_command(:log_fight, /^[Ff]ight$/, /channel/){|*whats|
       me.fight(bot, server, channel, whats)
     }
 

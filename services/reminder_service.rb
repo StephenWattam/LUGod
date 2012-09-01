@@ -48,11 +48,11 @@ class ReminderService < HookService
       me.monitor(bot, nick)
     }
 
-    register_command(:tell_cmd, /tell/, [/channel/, /private/]){|who = nil, *args| 
+    register_command(:tell_cmd, /^tell$/, [/channel/, /private/]){|who = nil, *args| 
       me.tell(bot, nick, who, args.join(" "), false)
     }
 
-    register_command(:tell_override_cmd, /TELL/, [/channel/, /private/]){|who = nil, *args|
+    register_command(:tell_override_cmd, /^TELL$/, [/channel/, /private/]){|who = nil, *args|
       me.tell(bot, nick, who, args.join(" "), true)
     }
   end

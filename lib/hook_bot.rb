@@ -25,7 +25,7 @@ module HookBot
     end
 
 
-    # Configure the bot
+    # Configure the isaac backend for basic functions
     def configure
 
       # Give the bot a handle to config and handler
@@ -48,6 +48,11 @@ module HookBot
 
     end
 
+
+    # Registers a handler for all messages
+    #
+    # There can be only one handler, and this method
+    # basically defers to isaac's #register call.
     def register(handler)
       conf    = @config
       bot     = self
@@ -66,7 +71,9 @@ module HookBot
       }
     end
 
+
     # Run the bot
+    #
     # This can be done in a blocking or non-blocking way
     # if verify is true and threaded is true, the bot will
     # sit and check that it has successfully connected before
@@ -96,20 +103,24 @@ module HookBot
       end
     end
 
+
+    # Is the bot currently connected?
+    #
+    # Falls through to Isaac.
     def connected?
       @bot.connected?
     end
 
 
-
     # Close the bot's connection to the server
+    #
+    # Accepts a timeout to allow the server
+    # to respond.
     def disconnect(reason = nil, timeout = 5)
       # Quit and wait for replies from server
       @bot.quit(reason)
       sleep(timeout)
     end
-
-
 
 
     # Produce a bot object with stateful defaults.
@@ -118,40 +129,61 @@ module HookBot
     # since it is the unsafe side of all interactions
     # between services and the [safe] isaac lib.
     def clone_state(msg)
+
+      # Construct a new class
       cls = Class.new() do
        
+        # Require the isaac agent and 
+        # the raw message from isaac
         def initialize(isaac, msg)
           @msg = msg
           @bot = isaac
         end
 
+        # Which server is the bot 
+        # connected to?
         def server
           @bot.server
         end
 
+        # Which nick does the bot
+        # currently have?
         def nick
           @bot.nick
         end
 
+        # Tell the bot to join a channel
         def join(channel)
           @bot.join(channel)
         end
 
+        # Is the bot currently connected?
         def connected?
           @bot.connected?
         end
 
+        # Say something.  
+        #
+        # Wraps isaac's call with a default value
+        # from msg
         def say(msg, recipient = nil)
           recipient ||= @msg.reply_to if @msg
           @bot.msg(recipient, msg)
         end
 
+        # Action something
+        #
+        # Wraps isaac's call with a default value
+        # from msg
         def action(msg, recipient)
           recipient ||= @msg.reply_to if @msg
           @bot.action(recipient, msg)
         end
       end
 
+      # Return an instance of the new class
+      # with defaults from the message
+      # and a link back to isaac.
       return cls.new(@bot, msg)
     end
 
@@ -168,23 +200,37 @@ module HookBot
 
 
 
-  # Manage hooks
+  # Manage hooks, allowing a single-callback system to dispatch to many objects.
+  #
+  # This system uses a regex-based hooks method to call objects, and keeps track of 
+  # up to 5 threads per service (or just one if they request no concurrency).
   class HookManager
     
     # The maximum number of threads each module
     # may have in a running state at any one time.
     MAX_MODULE_THREADS = 5
 
+    # Construct a hook bot
     def initialize 
       # Keep track of hooks and what object owns what
       @hooks          = {}
       @cmds           = {}
       @modules        = {}
+
+      # Prevent access to hooks when other things are
+      # editing or using them.
       @hooks_mutex    = Mutex.new
     end
 
 
     # Register a command, only invoked when COMMAND_RX is triggered.
+    #
+    # mod     -- A link to the module object, used in tracking threads
+    # name    -- A name for this command, for unregistering later
+    # trigger -- A regex which, if the command matches (see COMMAND_RX), will cause the
+    #            callback to fire
+    # types   -- The types of message to respond to.
+    # p       -- A procedure to run when all the checks work out
     def register_command(mod, name, trigger, types = /channel/, &p)
       raise "Please define a block"               if not block_given?
       raise "That command is already hooked."     if @cmds[name]
@@ -207,7 +253,15 @@ module HookBot
       $log.debug "Registered command '#{name}'"
     end
 
-    # Register a hook to be run on any message
+
+    # Register a hook to be run on any message.
+    #
+    # mod     -- A link to the module object, used in tracking threads
+    # name    -- A name for this hook, for unregistering later
+    # trigger -- A procedure to run.  If this returns true, it will 
+    #            cause the callback to fire.
+    # types   -- The types of message to respond to.
+    # p       -- A procedure to run when all the checks work out
     def register_hook(mod, name, trigger = nil, types = /channel/, &p)
       raise "Please define a block"               if not block_given?
       raise "That command is already hooked."     if @hooks[name]
@@ -232,7 +286,15 @@ module HookBot
       $log.debug "Registered hook '#{name}'"
     end
 
-    # Remove hook by name
+
+    # Remove a selection of hooks by name
+    #
+    # If the first argument is a number, it will
+    # be used as the timeout when waiting for any
+    # threads to end.
+    #
+    # If no timeout is given, it will wait
+    # indefinitely for threads to end.
     def unregister_hooks(*names)
       # Load a timeout if one is given
       names.delete(nil)
@@ -256,6 +318,13 @@ module HookBot
     end
 
     # Remove cmd by name
+    #
+    # If the first argument is a number, it will
+    # be used as the timeout when waiting for any
+    # threads to end.
+    #
+    # If no timeout is given, it will wait
+    # indefinitely for threads to end.
     def unregister_commands(*names)
       # Load a timeout if one is given
       names.delete(nil)
@@ -278,6 +347,7 @@ module HookBot
       }
     end
 
+
     # Unregister everything by a given module
     def unregister_modules(timeout=nil, *mods)
       mods.each{|mod|
@@ -291,20 +361,30 @@ module HookBot
       }
     end
 
-    # Register the module simply by calling hook
+
+    # Register a module by calling hook_thyself.
+    #
+    # Since modules should extend HookService, they should implement
+    # hook_thyself in order to make initial hooks.
     def register_module(mod)
       $log.debug "Registering module: #{mod.class}..."
       mod.hook_thyself
     end
 
-    # unregister ALL
+
+    # Unregister all hooks and commands by unloading
+    # all modules.
     def unregister_all(timeout = nil)
       $log.debug "Unregistering all modules..."
       # clone to avoid editing whilst iterating
       unregister_modules(timeout, *@modules.keys.clone) 
     end
 
-    # Send a message via the hook/command system
+
+    # Receive a message from the HookBot.
+    #
+    # The 'bot' argument is a custom class including 
+    # defaults taken from msg.
     def dispatch(type, msg, bot)
       $log.debug "Received a message of type #{type}"
 
@@ -319,23 +399,30 @@ module HookBot
 
   private
 
-    # Checks that a module still has some hooks loaded and deletes it from the list if not.
+    # Deletes any modules without hooks or commands from the @modules list.
+    # 
+    # Waits timeout seconds for its threads to close.
     def cleanup_module(mod, timeout = nil)
+      # Check the module exists
       return if not @modules[mod]
+
+      # Close all threads using the timeout, and remove the module from @modules
       if @modules[mod][:hooks].length == 0 and @modules[mod][:cmds].length == 0
-        join_module_threads(@modules[mod][:threads], timeout)  # Close all its threads
-        @modules.delete(mod)                              # Remove the module
+        join_module_threads(@modules[mod][:threads], timeout)   # Close all its threads
+        @modules.delete(mod)                                    # Remove the module
       end
     end
 
 
-    # Kills all old threads for a module
+    # Remove any threads from the thread listing if they are not alive.
     def purge_module_threads(mod)
       return if not @modules[mod]
+
       @modules[mod][:threads].delete_if{|t| 
         not t.alive?
       } 
     end
+
 
     # Join all threads of a given module with an overall timeout
     def join_module_threads(threads, timeout = nil)
@@ -483,6 +570,7 @@ module HookBot
        :raw_msg       => (msg)? msg           : nil   # TODO: make this simply 'msg'
       }
     end
+
 
     # Invoke something with certain vars set.
     def invoke(vars, block, args=[], thread_to_await=nil)

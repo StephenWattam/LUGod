@@ -433,7 +433,7 @@ class GTalkBridgeService < HookService
       me.xmpp_monitor( bot, nick, message )
     }
 
-    register_command(:xmpp_users, /[Uu]sers/, /channel/){
+    register_command(:xmpp_users, /^[Uu]sers$/, /channel/){
       me.xmpp_users( bot )
     }
   end
