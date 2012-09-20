@@ -54,7 +54,7 @@ module LinkInfoLookup
     CONTENT_RX = /.*\/html(;|$)/i
 
     # Used to match the content of the title element.
-    TITLE_RX = /<\s*title\s*>(.*)<\s*\/\s*title\s*>/mi
+    TITLE_RX = /<\s*title\s*>(.*?)<\s*\/\s*title\s*>/mi
 
     # Looks up the title from a page
     def request
