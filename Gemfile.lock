@@ -22,6 +22,7 @@ GEM
       nokogiri (~> 1.4)
     nokogiri (1.5.5)
     raspell (1.3)
+    rmagick (2.13.1)
     sqlite3 (1.3.6)
     time-ago-in-words (0.1.2)
     wolfram (0.1.2)
@@ -35,6 +36,7 @@ DEPENDENCIES
   htmlentities
   json
   raspell
+  rmagick
   sqlite3
   time-ago-in-words
   wolfram

@@ -4,6 +4,8 @@ require 'htmlentities'
 require 'json'
 require 'time'
 require 'time-ago-in-words'
+require 'RMagick'
+require 'timeout'
 
 
 # This module contains all the info lookup systems
@@ -168,6 +170,78 @@ module LinkInfoLookup
       return false 
     end
   end
+
+
+  # Looks up an image
+  class ImageRequester < Requester  
+
+    CONTENT_RX = /^image\/.+$/
+
+    # Looks up the image info from a URL
+    def request
+      $log.debug "Looking up Image: #{@uri}"
+
+      # predef as nil 
+      info = nil
+
+      # Check content-type using a head request
+      client = Net::HTTP.new(@uri.host, @uri.port)
+      client.use_ssl = true if @uri.scheme.downcase == "https"
+      client.start{|http|
+        # normalise path
+        # clone and delete host info, then recombobulate
+        path = @uri.clone
+        %w{scheme userinfo host port registry}.each{|x| eval("path.#{x} = nil") }
+        path = path.to_s
+
+        # Make head request
+        head        = http.head(path)
+        redirects   = @config[:max_redirects]
+        while head.kind_of?(Net::HTTPRedirection) do
+          path        = head['location']
+          head        = http.head(head['location'])
+          redirects  -= 1
+          raise "Too many redirects" if redirects < 0
+        end
+
+        $log.debug "Looked up head: '#{head['content-type']}'"
+        return nil if(not head['content-type'] =~ CONTENT_RX)
+
+        # Make proper request
+        $log.debug 'Correct content type!'
+        res   = http.get(path)
+        body  = res.body
+
+        img = Magick::Image.from_blob(body)[0]
+        info = []
+        info << img.format
+        info << "#{img.depth}-bit"
+        info << "#{human_filesize(img.filesize.to_i)}"
+        info = info.join(", ")
+
+      }
+
+      # Store and say we succeeded
+      @result = info
+      return true
+    rescue Exception => e
+      $log.error "Exception looking up image info: #{e}"
+      $log.debug e.backtrace.join("\n")
+      return false 
+    end
+
+    private
+    def human_filesize(size)
+      units = %w{B KiB MiB GiB TiB}
+      e = (Math.log(size)/Math.log(1024)).floor
+      s = "%.3f" % (size.to_f / 1024**e)
+      s.sub(/\.?0*$/, units[e])
+    end
+  end
+
+
+
+
 end
 
 
@@ -207,6 +281,7 @@ class TitleService < HookService
   # Which requester objects are used for which URIs is set in the config file
   # and is based on regex rules.
   def check_link( bot, message )
+
     uris = URI.extract(message, ["http", "https"]).uniq
     $log.debug "Found #{uris.length} URLs in message."
 
@@ -216,20 +291,22 @@ class TitleService < HookService
       return
     end
 
-    # Create a requester object for each item in the list
-    # and populate it with its URI
     requesters = []
-    uris.each{|raw_uri|
+    Timeout::timeout(@config[:timeout]){
+      # Create a requester object for each item in the list
+      # and populate it with its URI
+      uris.each{|raw_uri|
 
-      # this is used to jump out after the first match.
-      requested = false
-      @config[:requesters].each{|k, v|
+        # this is used to jump out after the first match.
+        requested = false
+        @config[:requesters].each{|k, v|
 
-        if (not requested) and raw_uri =~ Regexp.new(k) then # match first hit only
-          requesters << eval("LinkInfoLookup::#{v}.new(@config[:#{v}], raw_uri)") 
-          # stop looking once we've found one
-          requested = true
-        end
+          if (not requested) and raw_uri =~ Regexp.new(k) then # match first hit only
+            requesters << eval("LinkInfoLookup::#{v}.new(@config[:#{v}], raw_uri)") 
+            # stop looking once we've found one
+            requested = true
+          end
+        }
       }
     }
 

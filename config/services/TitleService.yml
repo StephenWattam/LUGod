@@ -2,6 +2,7 @@
 :max_urls_per_msg: 5                          # Do not output if more than this number of URLs per message is seen
 :max_info_length: 200                         # Max length for any requester's output
 :min_info_length: 5                           # Minimum length for any requester's output
+:timeout: 10                                  # Don't wait more than 10 seconds for the lot.  Kill the thread if exceeding this.
                                               
 # Templates for global output (1 per message)
 :info_template: "%s"
@@ -11,6 +12,7 @@
 # This is done on a first match policy.  Put highest specificity first.
 :requesters:                                                  
   '^https?://([a-z]+\.)?imgur.com/.+': ImgurRequester
+  '^https?://.+\.(jpg|png|gif|jpeg|tiff|bmp)$': ImageRequester
   '^https?://.*': TitleRequester
 
 # Configuration for each requester type
@@ -18,6 +20,9 @@
 :TitleRequester:
   :max_redirects: 5         # Follow 5 redirects
   :template: "Title: %s"    # The prefix used when outputting.
+:ImageRequester:
+  :max_redirects: 5         # Follow 5 redirects
+  :template: "Image: %s"    # The prefix used when outputting.
 :ImgurRequester:
   :min_title_length: 5      # Check the title is over n chars
   :lookup_titles: true      # Should we fall back to using TitleRequester to look up the title?

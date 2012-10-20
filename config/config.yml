@@ -53,7 +53,7 @@
         - ChannelManager
         # - AutoReplyService
         # - FortuneService
-        # - TitleService
+        - TitleService
         - InfoService
         - ReminderService 
         - HilariousDeathService
@@ -71,4 +71,3 @@
     :irc:
       :nick: ^LUGod_test
       :password:                      # the test nick is not registered
-      # :channel: ! '#lucs-dev'

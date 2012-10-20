@@ -6,3 +6,4 @@ gem "htmlentities"      # TitleService
 gem "blather"           # GTalkService
 gem "json"              # TitleService
 gem "time-ago-in-words" # TitleService, LogService
+gem "rmagick"           # TitleService
