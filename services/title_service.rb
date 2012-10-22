@@ -43,6 +43,12 @@ module LinkInfoLookup
   end
 
 
+  class BlacklistRequester < Requester
+    def request
+      return false
+    end
+  end
+
 
   # Look up the title tag of a HTML page.
   #

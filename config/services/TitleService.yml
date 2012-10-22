@@ -11,12 +11,14 @@
 # Requesters.  If the regex in the key matches, the requester object in the value will be used to get info
 # This is done on a first match policy.  Put highest specificity first.
 :requesters:                                                  
+  '^https?://en.wikipedia.org/wiki/.*': BlacklistRequester  # Don't find titles for obvious links
   '^https?://([a-z]+\.)?imgur.com/.+': ImgurRequester
   '^https?://.+\.(jpg|png|gif|jpeg|tiff|bmp)$': ImageRequester
   '^https?://.*': TitleRequester
 
 # Configuration for each requester type
 # Each requester MUST have a template, but this is the only restriction
+:BlacklistRequester:        # no config for blacklist
 :TitleRequester:
   :max_redirects: 5         # Follow 5 redirects
   :template: "Title: %s"    # The prefix used when outputting.
