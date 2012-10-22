@@ -52,7 +52,7 @@
         # - LogService
         - ChannelManager
         # - AutoReplyService
-        # - FortuneService
+        - FortuneService
         - TitleService
         - InfoService
         - ReminderService 

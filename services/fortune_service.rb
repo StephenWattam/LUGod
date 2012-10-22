@@ -18,7 +18,8 @@ class FortuneService < HookService
   # Use unix fortune
   def fortune(bot)
     fortune = `#{@config[:fortune_cmd]}`
-    fortune.gsub!("\n", ";  ")
+    fortune.gsub!("\n", "; ")
+    fortune.gsub!("\t", " ")
     bot.say(fortune)
   end
 
