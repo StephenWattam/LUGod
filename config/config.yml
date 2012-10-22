@@ -51,8 +51,9 @@
       :objs:
         # - LogService
         - ChannelManager
+        - LuckyService
         # - AutoReplyService
-        - FortuneService
+        # - FortuneService
         - TitleService
         - InfoService
         - ReminderService 
