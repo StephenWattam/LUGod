@@ -20,14 +20,11 @@
     - TitleService
     - SpellService
     - ReminderService 
-    # - WolframService 
     - LogService
-    # - PingService   deprecated, use autoreply instead
     - AutoReplyService
     - HilariousDeathService
     - InfoService
     - FortuneService
-    # - GTalkBridgeService
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
   :logs:                                # A list of places to log to
@@ -59,8 +56,6 @@
         - ReminderService 
         - HilariousDeathService
         # - Echo
-        # - InfoService
-        # - GTalkBridgeService
     :logging:
       :logs:
         :default:
