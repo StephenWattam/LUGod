@@ -26,7 +26,7 @@ require './lib/hook_service.rb'
 # Constants, that is, true ones, not fron the config filke
 #
 # Bot version
-VERSION = '0.2.1'
+VERSION = '0.2.2'
 #
 #
 # Don't reconnect faster than this
@@ -41,6 +41,7 @@ BOT_DC_TIMEOUT = 5
 # The logging level to use when loading log configs
 BOOTSTRAP_LOG_LEVEL = Logger::INFO
 
+# The config file to load.
 CONFIG_FILE = 'config/config.yml'
 
 # -----------------------------------------------------------------------------------
@@ -173,11 +174,25 @@ config[:hooks][:objs].each{|h|
 
 # -----------------------------------------------------------------------------------
 # Start execution proper
+#
+# Write PID file
+if config[:pidfile] then
+  if File.exist?(config[:pidfile]) then
+    $log.fatal "PID file already exists at #{config[:pidfile]}!"
+    $log.fatal "Please stop the other instance before starting again."
+    $log.fatal "To disable this check, set pidfile to nil in the config file."
+    exit(1);
+  end
+  $log.info "Writing PID file to #{config[:pidfile]}..."
+  File.open(config[:pidfile], 'w'){|fo| fo.write($$) }
+end
+
 # Daemonize if we want to
 if config[:daemonise] then
   $log.info "Forking to background..."
   Process.daemon(true)
 end
+
 
 # -----------------------------------------------------------------------------------
 # Then connect
@@ -216,6 +231,12 @@ rescue SignalException => Se
     $log.fatal "Unhooking remaining services... (Will wait #{config[:module_thread_timeout]}s)"
     hook_manager.unregister_all(config[:module_thread_timeout])
   end
+end
+
+# Delete PID File
+if config[:pidfile] then
+  $log.info "Removing PID file (#{config[:pidfile]})..."
+  File.delete(config[:pidfile])
 end
 
 $log.info "Goodbye!"
