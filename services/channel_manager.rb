@@ -1,5 +1,6 @@
 require 'set'
 
+# Manages channel membership for the bot in a stateless manner
 class ChannelManager < HookService
 
   # Make channels accessible to other modules 

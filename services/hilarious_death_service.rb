@@ -1,5 +1,7 @@
 
+# Prints an item from the config file to the channel.
 class HilariousDeathService < HookService
+
   # This service can handle threading.
   def threaded?
     true

@@ -3,8 +3,7 @@ require 'logger'
 require 'thread'
 
 module Isaac
-  VERSION = '0.2.1'
-
+  
   Config = Struct.new(:server, :port, :ssl, :password, :nick, :realname, :version, :environment, :verbose, :log)
 
   class Bot
@@ -13,29 +12,13 @@ module Isaac
 
     # Initialise with a block for caling :on, etc
     def initialize(&b)
-      @config       = Config.new("localhost", 6667, false, nil, "isaac", "Isaac", 'isaac', :production, false, Logger.new(nil))
+      @config       = Config.new("localhost", 6667, false, nil, "lugod", "LUGod", 'lugod', :production, false, Logger.new(nil))
       @action_mutex = Mutex.new
       instance_eval(&b) if block_given?
     end
   
-    # Convenience 
-    def log
-      @config.log
-    end
-
-    # Server
-    def server
-      @config.server
-    end
-
-    def nick
-      @config.nick
-    end
-
-    # Is the bot currently connected?
-    def connected?
-      (@irc) ? @irc.connected? : false
-    end
+    # ---------------------------------------------------------------
+    #  Setup and Object Management
 
     # Configure by assigning things to the called back object
     def configure(&b)
@@ -45,7 +28,7 @@ module Isaac
       }
     end
 
-    # Add a handler
+    # Add handler
     def register(&block)
       @action_mutex.synchronize{
         log.info "Registering client for hooks"
@@ -53,6 +36,7 @@ module Isaac
       }
     end
 
+    # Remove handler.
     def unregister
       @action_mutex.synchronize{
         @hook = nil
@@ -65,6 +49,33 @@ module Isaac
     end
 
 
+
+    # ---------------------------------------------------------------
+    #  Utilities and Control
+
+    # Connect and start doing stuff.
+    def start
+      log.info "Connecting to #{@config.server}:#{@config.port}" unless @config.environment == :test
+      @irc = IRC.new(self, @config)
+      @irc.connect
+    end
+
+    # Dispatch an event using the hook system
+    def dispatch(event, msg=nil)
+      return if not @hook
+      @hook.call(event, msg)
+    end
+
+    # Convenience 
+    def log
+      @config.log
+    end
+
+
+
+    # ---------------------------------------------------------------
+    #  Network Management 
+    
     # Send raw info to IRC
     def raw(command)
       @action_mutex.synchronize{
@@ -114,20 +125,25 @@ module Isaac
       raw command
     end
 
-    # Connect and start doing stuff.
-    def start
-      log.info "Connecting to #{@config.server}:#{@config.port}" unless @config.environment == :test
-      @irc = IRC.new(self, @config)
-      @irc.connect
+    # Server
+    def server
+      @config.server
     end
 
-    # Dispatch an event using the hook system
-    def dispatch(event, msg=nil)
-      return if not @hook
-      @hook.call(event, msg)
+    def nick
+      @config.nick
+    end
+
+    # Is the bot currently connected?
+    def connected?
+      (@irc) ? @irc.connected? : false
     end
   end
 
+  
+  
+  
+  # ===============================================================
   # Handles low-level IRC communications
   class IRC
     def initialize(bot, config)
@@ -227,6 +243,12 @@ module Isaac
     end
   end
 
+
+
+
+
+  # ===============================================================
+  #  Represents a single IRC message.
   class Message
     attr_accessor :raw, :prefix, :command, :params
 
@@ -341,6 +363,10 @@ module Isaac
     end
   end
 
+
+
+  # ===============================================================
+  #  Holds messages until they can be sent or received
   class Queue
     def initialize(socket, server)
       # We need  server  for pinging us out of an excess flood

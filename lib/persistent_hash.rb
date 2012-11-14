@@ -47,6 +47,8 @@ class PersistentHash < Hash
     }
   end
 
+  # Load from a file into the current object
+  # Will wipe current data if clear = true.
   def load(clear=true, filename = @filename)
     @mutex.synchronize{
       @filename = filename
@@ -58,19 +60,3 @@ class PersistentHash < Hash
   end
 
 end
-
-
-
-
-## test script
-#x = SettingsManager.new(nil, 'test')
-#x[4] = "test"
-#x[5] = "test"
-#x[6] = "test"
-#x.save
-
-
-
-#y = SettingsManager.new( nil, "test", true )
-##y.save
-#y.save_as( "test2" )

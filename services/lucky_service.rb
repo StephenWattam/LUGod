@@ -1,9 +1,7 @@
-
-# Uses google to find the first hit for a search term.
-# can be handy for simple lookups
-
 require 'google-search'
 
+# Uses google to find the first hit for a search term.
+# can be handy for simple lookups and RTFM reminders
 class LuckyService < HookService
 
 
@@ -12,6 +10,7 @@ class LuckyService < HookService
     true
   end
 
+  # description
   def help
     "Looks up the first Google result.  Use '!lucky search term' to search."
   end
@@ -30,6 +29,7 @@ class LuckyService < HookService
     bot.say("#{@config[:prompt]} #{uri}")
   end
 
+  # Set up !lucky.
   def hook_thyself
     me = self
 
@@ -41,12 +41,5 @@ class LuckyService < HookService
       end
     }
   end
- 
-  # Close resources: write reminder file to disk
-  def close
-    super # unhook bot
-  end
-
-
 end
 

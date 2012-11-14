@@ -1,10 +1,9 @@
-
-
 require 'rubygems'
 require 'raspell'
 require 'time-ago-in-words'
 
-
+# Allows people to set reminders for one another.
+# Matches regex on nicks, to set reminds for anyone (or variant nicks like away flags)!
 class ReminderService < HookService
 
 

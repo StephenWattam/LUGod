@@ -1,21 +1,18 @@
 # Provides eight ball !8
 # and random quote powers.
-
-
-
 class FortuneService < HookService
-
 
   # We can handle threading...
   def threaded?
     true
   end
 
+  # Description
   def help
     "Tells fortunes.  use '!8ball [question]' to ask a question, or '!fortune' for a conventional unix fortune."
   end
 
-  # Use unix fortune
+  # Use unix fortune by shelling out
   def fortune(bot)
     fortune = `#{@config[:fortune_cmd]}`
     fortune.gsub!("\n", "; ")
@@ -29,6 +26,7 @@ class FortuneService < HookService
     bot.say(response)
   end
 
+  # Attach to Fortune and 8ball
   def hook_thyself
     me = self
 
@@ -41,11 +39,5 @@ class FortuneService < HookService
     }
   end
  
-  # Close resources: write reminder file to disk
-  def close
-    super # unhook bot
-  end
-
-
 end
 

@@ -127,7 +127,7 @@ module LinkInfoLookup
   #
   # This uses the imgur API, and so can return richer data
   # than a generic lookup, but can be slower for it.
-  class ImgurRequester < TitleRequester # TODO
+  class ImgurRequester < TitleRequester 
 
     # Looks up imgur info
     def request
@@ -245,9 +245,6 @@ module LinkInfoLookup
     end
   end
 
-
-
-
 end
 
 
@@ -337,12 +334,12 @@ class TitleService < HookService
   def hook_thyself
     me      = self
     trigger = lambda{|raw|
-                        return (raw and raw.message =~ URL_RX)
-                    }
+      return (raw and raw.message =~ URL_RX)
+    }
 
     register_hook(:titlefinder, trigger, /channel/){
-                        me.check_link(bot, message)
-                      }
+      me.check_link(bot, message)
+    }
   end
 
 end

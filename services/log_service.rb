@@ -3,9 +3,12 @@ require 'sqlite3'
 require 'time'
 require 'time-ago-in-words'
 
+# Manages a SQLite log, and provides basic reporting functionality
 class LogService < HookService
 
-
+#
+# Used to create the database on-the-fly if it doesn't exist.
+# This should match up to the SQL used below
 SCHEMA = %{
 CREATE TABLE "messages" (
     "time" INTEGER NOT NULL,
@@ -19,9 +22,11 @@ CREATE TABLE "messages" (
 );
 }
 
+  # A handy description
   def help
     "Logging service, capable of searching using '!search pattern [nick] [offset]', counting using '!count pattern', log-fighting with '!fight p1 p2 ...', and '!seen nick'.  Supports unix glob syntax on all fields.  Case sensitive: #{@config[:case_sensitive]}.  Auto-wildcard: #{@config[:auto_wildcard]}"
   end
+
 
   # Connect to db
   def initialize(bot, config)
@@ -41,11 +46,13 @@ CREATE TABLE "messages" (
     @db = DatabaseConnection.new(@config[:database_path], 100, @config[:pragma])
   end
 
+  # Count instances of a given pattern
   def count(bot, server, channel, what, who)
     bot.say "I found #{perform_count(server, channel, auto_wildcard(what), auto_wildcard(who))} occurrences in the logs." 
   end
 
-
+  # Output relative counts of many patterns, to show which one 'won'
+  # like GoogleFight
   def fight(bot, server, channel, items)
     if items.length < 2
       bot.say "Nothing to fight!" 
@@ -73,7 +80,7 @@ CREATE TABLE "messages" (
     end
   end
 
-
+  # Search for a pattern in a given server, channel, and by a given nick.
   def search(bot, server, channel, what, who, offset)
     rs, num = perform_search(server, channel, auto_wildcard(what), auto_wildcard(who), offset)
 
@@ -94,7 +101,6 @@ CREATE TABLE "messages" (
   # Output last datetime a user was seen
   def seen(bot, server, channel, nick, who, bot_nick)
     
-
     # Check the user isn't checking themself
     if not who then
       bot.say "Provide a person to look for, please."
@@ -124,7 +130,8 @@ CREATE TABLE "messages" (
   # Hook the bot
   def hook_thyself
     me      = self
-    # TODO: Hook *everything*
+
+    # TODO: Hook more types of message
 
     register_command(:log_seen, /^[Ss]een$/, [/channel/, /private/]){|who = "*"|
       me.seen(bot, server, channel, nick, who, bot_nick)
@@ -155,7 +162,7 @@ CREATE TABLE "messages" (
     @db.close
   end
 
-
+  # Add a message to the log.
   def add_to_log(type, to, from, host, message, raw, server)
     time = Time.now.to_i 
 
@@ -185,6 +192,10 @@ CREATE TABLE "messages" (
 
 private
 
+  # Automatically wraps an expression in wildcards if
+  #  1) the config demands it,
+  #  2) the expression isn't already wildcarded
+  # Is also capable of making searches non-case-sensitive, config willing.
   def auto_wildcard(expr)
     expr = "*#{expr}*" if not expr.include?('*') if @config[:auto_wildcard]
 
@@ -203,6 +214,7 @@ private
     return expr 
   end
 
+  # Count messages conforming to a pattern.
   def perform_count(server, channel, what, who="*")
     # Get a count of everything
     rs = @db.select("messages", "count(*)", 
@@ -211,7 +223,7 @@ private
     return rs.flatten[0].to_i
   end
 
-
+  # Search for messages conforming to a pattern
   def perform_search(server, channel, what, who="*", offset=0)
     # Quit if we didn't find anything
     num = perform_count(server, channel, what, who)
@@ -228,7 +240,7 @@ private
   end
 
 
-  # Generically handles an sqlite3 database
+  # Generically handles an sqlite3 database with a slightly less ugly API
   class DatabaseConnection
     attr_reader :dbpath
 

@@ -1,6 +1,7 @@
 
-
+# Demo service used to test callbacks of varying types
 class Echo < HookService
+
   def help
     "EchoService echoes.  A lot.  Mainly used for debugging."
   end

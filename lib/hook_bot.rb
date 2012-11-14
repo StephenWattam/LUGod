@@ -60,8 +60,6 @@ module HookBot
 
       @bot.register{|type, msg|
         begin
-          # isaac.join conf[:channel] if type == :connect 
-            
           $log.debug "Received message: #{type} #{msg}"
           handler.dispatch(type, msg, bot.clone_state(msg))  # TODO: send a binding?
         rescue Exception => e
