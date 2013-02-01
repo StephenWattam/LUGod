@@ -13,7 +13,7 @@
 :requesters:                                                  
   '^https?://en.wikipedia.org/wiki/.*': BlacklistRequester  # Don't find titles for obvious links
   '^https?://([a-z]+\.)?imgur.com/.+': ImgurRequester
-  '^https?://.+\.(jpg|png|gif|jpeg|tiff|bmp)$': ImageRequester
+# '^https?://.+\.(jpg|png|gif|jpeg|tiff|bmp)$': ImageRequester
   '^https?://.*': TitleRequester
 
 # Configuration for each requester type

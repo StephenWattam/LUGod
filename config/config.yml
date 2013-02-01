@@ -1,14 +1,14 @@
 ---
 :bot_connection_poll_rate: 120          # Check every n seconds that the bot is still conected
 :daemonise: true                        # Daemonise to background?
-:module_thread_timeout: 0.5               # time in seconds to allow the modules' threads to close before killing them on shutdown
-:pidfile: lugod.pid                     # Set to nil to disable pid file checking
+:module_thread_timeout: 0.5             # time in seconds to allow the modules' threads to close before killing them on shutdown
+:pidfile: /srv/LUGod/lugod.pid          # Set to nil to disable pid file checking
 :irc:
   :connect_timeout: 10                  # How long to check we're connected if verify is true
   :nick: ^LUGod                         # The nickname to use
   :user: LUGod                          # The username for IRC
   :name: LU Master of All               # The full name of the user
-  :password: lugodpass                  # Nick auth
+  :password: lugodpass            # Nick auth
   :server: irc.freenode.net             # The server
   :port: 6667                           # Port
   :verbose: false                       # turn logging on/off for the bot
@@ -26,6 +26,8 @@
     - HilariousDeathService
     - InfoService
     - FortuneService
+    - LuckyService
+    # - GTalkBridgeService
 :logging:                               # Logging config
   :progname: LUGod                      # The name of the app in the logs
   :logs:                                # A list of places to log to
@@ -49,7 +51,7 @@
       :objs:
         # - LogService
         - ChannelManager
-        - LuckyService
+        # - LuckyService
         # - AutoReplyService
         # - FortuneService
         - TitleService

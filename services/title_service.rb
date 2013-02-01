@@ -4,7 +4,6 @@ require 'htmlentities'
 require 'json'
 require 'time'
 require 'time-ago-in-words'
-require 'RMagick'
 require 'timeout'
 
 
@@ -183,8 +182,10 @@ module LinkInfoLookup
 
     CONTENT_RX = /^image\/.+$/
 
+
     # Looks up the image info from a URL
     def request
+      require 'RMagick'
       $log.debug "Looking up Image: #{@uri}"
 
       # predef as nil 
