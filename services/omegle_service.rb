@@ -33,6 +33,9 @@ require 'json'
 # Mikhail Slyusarev
 
 class Omegle
+
+  STATIC_HEADERS = {"referer" => "http://omegle.com"}
+
   attr_accessor :id
 
   # Establish connection here to the omegle host
@@ -54,9 +57,37 @@ class Omegle
   end
 
   # Make a GET request to <omegle url>/start to get an id.
-  def start
+  def start(options = {})
+    opts = {:question => nil,
+            :topics => nil}.merge(options)
     $log.debug("Starting Omegle session...")
-    @id = req('start', :get)[1..-2]   #previously ended at 6
+
+    if(opts[:question]) then
+      resp = req("start?rcs=1&firstevents=1&spid=&randid=#{get_randID}&cansavequestion=1&ask=#{URI::encode(opts[:question])}", :get)
+    else
+      topicstring = ""
+      topicstring = "&topics=#{ URI::encode(opts[:topics].to_s) }" if opts[:topics].is_a?(Array)
+      resp = req("start?firstevents=1#{topicstring}", :get)   #previously ended at 6
+    end
+    
+    $log.debug ("Response: #{resp}")
+
+    # Was the response JSON?
+    if resp =~ /^"[\w]+:\w+"$/ then
+      # not json, simply strip quotes
+      @id = resp[1..-2]
+    else
+      #json
+      # parse, find ID, add first events
+      resp = JSON.parse(resp)
+      raise "No ID in connection response!" if not resp["clientID"]
+      @id = resp["clientID"]
+
+      # Add events if we requested it.
+      add_events(resp["events"]) if resp["events"]
+    end
+    
+
     $log.debug("Started, id=#{@id}, urlenc = #{URI::encode(@id)}")
   end
 
@@ -100,20 +131,47 @@ class Omegle
 
   private
   def req(path, args="")
+    $log.debug("Omegle: Sending #{path}, args=#{args}")
+
     omegle = Net::HTTP.start(@options[:host])
     ret = nil
     begin
-      ret = omegle.post("/#{path}", args) if args != :get
-      ret = omegle.get("/#{path}")  if args == :get
-      $log.debug("Response #{ret}")
+      ret = omegle.post("/#{path}", args, STATIC_HEADERS) if args != :get
+      ret = omegle.get("/#{path}", STATIC_HEADERS)        if args == :get
+      $log.debug("Omegle: Received #{ret}, #{ret.body}")
     rescue EOFError
     rescue TimeoutError
     end
 
-    return ret.body if ret.code == "200"
+    return ret.body if ret and ret.code == "200"
     return nil
   end
 
+  def add_events(evts)
+    evts = [evts] if not evts.is_a? Array
+
+    # add to front of array, pop off back
+    evts.each{|e|
+      @events = [e] + @events
+    }
+  end
+
+  def get_randID()
+    # The JS in the omegle page says:
+    #  if(!randID||8!==randID.length)
+    #     randID=function(){
+    #         for(var a="",b=0;8>b;b++)
+    #           var c=Math.floor(32*Math.random()),
+    #           a=a+"23456789ABCDEFGHJKLMNPQRSTUVWXYZ".charAt(c);
+    #           return a
+    #   }();
+    str = "";
+    8.times{
+      str += "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"[ (rand() * 32).to_i ]
+    }
+
+    return str;
+  end
 
   def parse_response(str)
     return if(%w{win null}.include?(str.strip))
@@ -124,11 +182,8 @@ class Omegle
     # check it's events
     return if not evts.is_a? Array
 
-    # add to front of array, pop off back
-    evts.each{|e|
-      @events = [e] + @events
-    }
-
+    # add in order
+    add_events(evts)
   # rescue 
     # json failure, silent.
   end
@@ -152,10 +207,10 @@ class OmegleService < HookService
   
   # Print some help.
   def help
-    "Connects to omegle and summons a user, who talks through the bot.  Call !omegle to summon them, or !dc to disconnect them."
+    "Connects to omegle and summons a user, who talks through the bot.  Usage: '!omegle [topics]...' to summon, '!omegleAnon [topics]...' to summon without <nicks>, '!ask question' to enter spy mode."
   end
 
-  def summon_omegleite(bot, chan, use_nick=true)
+  def summon_omegleite(bot, chan, use_nick=true, topics=[])
 
     # check we don't already have an instance running.
     if @channels.include?(chan)
@@ -171,7 +226,12 @@ class OmegleService < HookService
 
       begin
 
-      omegle.start
+      # set topics and start
+      if topics.length > 0
+        omegle.start(:topics => topics)
+      else
+        omegle.start()
+      end
 
       # hook a normal conversation listener for a given channel only
       register_hook("omeg_send_#{chan}".to_sym, lambda{|raw| raw.channel == chan}, /channel/){
@@ -235,9 +295,77 @@ class OmegleService < HookService
 
     }.run
 
+  end
 
+
+  def spy_mode(bot, chan, question)
+
+    # check we don't already have an instance running.
+    if @channels.include?(chan)
+      bot.say("Your channel already has an omegle session open, use !dc to close it.")
+      return
+    end 
+
+    
+    # --- pullup
+    # attempt to get an omegle connection
+    omegle = Omegle.new(:host => "front1.omegle.com")
+    @channels[chan] = omegle
+    @connections[chan] = Thread.new(){
+
+      begin
+
+      omegle.start(:question => question)
+
+      # hook the dc command hook for one channel only
+      me = self 
+      register_command("omeg_dc_#{chan}".to_sym, /^dc$/, [/channel/, /private/]){
+        me.disconnect(bot, channel)
+      }
+
+      # tell people we've connected
+      bot.say("Asking Omegle...");
+
+      # then sit in a loop and handle omegle stuff
+      omegle.listen do |e|
+        $log.debug "Omegle [chan=#{chan}] Encounetered omegle event: #{e}"
+
+        # bot.say("DEBUG: #{e}")
+
+        case e[0]
+        when "spyMessage"
+          bot.say("<omeg #{e[1].split()[1]}> #{e[2]}")
+        when "spyDisconnected"
+          bot.say("#{e[1]} disconnected.")
+        when "connected"
+          bot.say("A conversation has started: '#{question}'")
+        when "waiting"
+          bot.say("Waiting for people to connect.");
+        end
+      end
+
+
+      # --- pulldown
+      # first remove hooks
+      unregister_commands(1, "omeg_dc_#{chan}".to_sym)
+
+      # then remove from the list
+      # TODO: mutex.
+      @channels.delete(chan)
+      @connections.delete(chan)
+
+      # alert users
+      bot.say("The Omegle session has ended.")
+
+      rescue Exception => e
+        $log.debug("Error in thread: #{e}")
+        $log.debug("#{e.backtrace.join("\n")}")
+      end 
+
+    }.run
 
   end
+
 
   def disconnect(bot, chan)
     if not @channels[chan] then
@@ -255,8 +383,22 @@ class OmegleService < HookService
   def hook_thyself
     me = self;
 
-    register_command(:omeg_connect, /^[Oo]megle$/, /channel/){|use_nick=true|
-      me.summon_omegleite(bot, channel, use_nick != "nonick")
+
+    register_command(:omeg_connect_anon, /^[Oo]megleAnon$/, /channel/){|*topics|
+      me.summon_omegleite(bot, channel, false, topics)
+    }
+
+    register_command(:omeg_connect, /^[Oo]megle$/, /channel/){|*topics|
+      me.summon_omegleite(bot, channel, true, topics)
+    }
+
+
+    register_command(:omeg_spy, /^[Aa]sk$/, /channel/){|*question|
+      if question.length < 0
+        bot.say("Please provide a question!")
+      else
+        me.spy_mode(bot, channel, question.join(" "))
+      end
     }
 
   end
