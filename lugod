@@ -173,6 +173,13 @@ config[:hooks][:objs].each{|h|
 
 
 # -----------------------------------------------------------------------------------
+# Daemonize if we want to
+if config[:daemonise] then
+  $log.info "Forking to background..."
+  Process.daemon(true)
+end
+
+#
 # Start execution proper
 #
 # Write PID file
@@ -185,12 +192,6 @@ if config[:pidfile] then
   end
   $log.info "Writing PID file to #{config[:pidfile]}..."
   File.open(config[:pidfile], 'w'){|fo| fo.write($$) }
-end
-
-# Daemonize if we want to
-if config[:daemonise] then
-  $log.info "Forking to background..."
-  Process.daemon(true)
 end
 
 
