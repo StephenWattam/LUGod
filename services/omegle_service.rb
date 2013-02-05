@@ -237,14 +237,48 @@ class OmegleService < HookService
   def initialize(bot, config)
     super(bot, config, true) # threaded
     # channel-connection list.
-    @channels = {}
-    @connections = {}
+    @channels     = {}  # 
+    @blacklist    = {}  # who doesn't wish to talk per channel
+    @use_nicks    = {}
+    @connections  = {}
   end 
 
   
   # Print some help.
   def help
-    "Connects to omegle and summons a user, who talks through the bot.  Usage: '!omegle [topics]...' to summon, '!ask question' for spy mode, '!askMe' to be asked a question, or !toggleNick to toggle sending nicks on/off"
+    "Connects to omegle and summons a user, who talks through the bot.  Usage: '!omegle [topics]...' to summon, '!ask question' for spy mode, '!askMe' to be asked a question, or !toggleNick to toggle sending nicks on/off, '!toggleMe' to stop your messages being sent, and '!omegleBlacklist' to list it.  If you're blacklisted, use !ij [msg] to say stuff."
+  end
+
+  # show nicks?
+  def use_nicks?(channel)
+    @use_nicks[channel] || @config[:use_nick]
+  end
+
+  # Is a given user in a given channel blacklisted?
+  def blacklisted?(channel, nick)
+    return false if not @blacklist[channel].is_a?(Array)
+    @blacklist[channel].include?(nick)
+  end
+
+  # remove from blacklist.
+  # used to ensure the caller can talk
+  def ensure_not_blacklisted(channel, nick)
+    return if not @blacklist[channel].is_a?(Array)
+    @blacklist[channel].delete(nick)
+  end
+
+  def say_to_existing_session(chan, nick, message)
+    omegle = @channels[chan]
+    return if not omegle
+
+    omegle.typing
+    # format message
+    output = message
+    output = "<%s> %s" % [nick, message] if(use_nicks?(chan))
+    omegle.send(output)
+  rescue Exception => e
+    $log.debug("Error in omeg_send_#{chan}: #{e}")
+    $log.debug("#{e.backtrace.join("\n")}")
   end
 
   def summon_omegleite(bot, chan, topics=nil, answer_mode=false)
@@ -255,6 +289,7 @@ class OmegleService < HookService
       return
     end 
 
+    
     # make topics equal nil if it's an empty array
     topics = nil if topics.is_a?(Array) and topics.length == 0
 
@@ -270,25 +305,20 @@ class OmegleService < HookService
       omegle.start(:answer => answer_mode, :topics => topics)
       # omegle.start(:topics => topics)
 
-      # hook a normal conversation listener for a given channel only
-      register_hook("omeg_send_#{chan}".to_sym, lambda{|raw| raw.channel == chan}, /channel/){
-        begin
-          omegle.typing
-
-          # format message
-          output = message
-          output = "<%s> %s" % [nick, message] if(@config[:use_nick])
-          omegle.send(output)
-        rescue Exception => e
-          $log.debug("Error in omeg_send_#{chan}: #{e}")
-          $log.debug("#{e.backtrace.join("\n")}")
-        end
+      # hook a normal conversation listener for a given channel only,
+      # and an interjection that ignores the blacklist
+      me = self
+      register_hook("omeg_send_#{chan}".to_sym, lambda{|raw| raw.channel == chan and not me.blacklisted?(chan, raw.nick)}, /channel/){
+        me.say_to_existing_session(channel, nick, message)
       }
       
       # hook the dc command hook for one channel only
       me = self 
       register_command("omeg_dc_#{chan}".to_sym, /^dc$/, [/channel/, /private/]){
         me.disconnect(bot, channel)
+      }
+      register_command("omeg_interject_#{chan}".to_sym, /^ij$/, [/channel/, /private/]){|*msg|
+        me.say_to_existing_session(channel, nick, msg.join("*"))
       }
 
       # tell people we've connected
@@ -422,14 +452,35 @@ class OmegleService < HookService
   end
 
   # toggle nick sending on/off
-  def toggle_nick(bot)
-    @config[:use_nick] = (not (@config[:use_nick] == true))
+  def toggle_nick(bot, channel)
+    @use_nicks[channel] = (not @use_nicks[channel] == true)
     
-    if @config[:use_nick]
+    if use_nicks?(channel)
       bot.say("Nicks will be sent with messages.")
     else
       bot.say("Nicks will not be sent (omegle users will just see anonymous text)")
     end
+  end
+
+  # toggle blacklist
+  def toggle_blacklist(bot, channel, nick)
+    @blacklist[channel] = [] if not @blacklist[channel].is_a?(Array)
+
+    if not @blacklist[channel].include?(nick)
+      @blacklist[channel] << nick 
+    else
+      @blacklist[channel].delete(nick)
+    end
+
+    if blacklisted?(channel, nick)
+      bot.say("#{nick} will no longer send messages to Omegle")
+    else
+      bot.say("#{nick} can talk to Omeglites now.")
+    end
+  end
+
+  def report_blacklist(bot, channel)
+    bot.say("Omegle messages NOT sent from: #{(@blacklist[channel] || []).join(", ")}")
   end
 
   # Run through configs and hook them all.
@@ -438,18 +489,30 @@ class OmegleService < HookService
   def hook_thyself
     me = self;
 
+    # Show blacklist
+    register_command(:omeg_blacklist_show, /^[Oo]megleBlacklist$/, /channel/){
+      me.report_blacklist(bot, channel)
+    }
+  
+    # Toggle use of blacklist for a user 
+    register_command(:omeg_blacklist, /^[Tt]oggleMe$/, /channel/){
+      me.toggle_blacklist(bot, channel, nick)
+    }
+
     # Toggle use of nick template
     register_command(:omeg_toggle, /^[Tt]oggleNick$/, /channel/){
-      me.toggle_nick(bot)
+      me.toggle_nick(bot, channel)
     }
 
     # Connect to a single stranger with <nickname> support
     register_command(:omeg_connect, /^[Oo]megle$/, /channel/){|*topics|
+      me.ensure_not_blacklisted(channel, nick)
       me.summon_omegleite(bot, channel, topics)
     }
     
     # Connect to a single stranger with <nickname> support
     register_command(:omeg_ask, /^[Aa]skMe$/, /channel/){
+      me.ensure_not_blacklisted(channel, nick)
       me.summon_omegleite(bot, channel, nil, true)
     }
 
@@ -467,7 +530,7 @@ class OmegleService < HookService
 
   # Close and clean up any open resources
   def close
-    @channels.each{|omegle|
+    @channels.each{|channel,omegle|
       omegle.send("You have been connected to a message bridge, which is now shutting down.  Goodbye.")
       omegle.disconnect
     }
