@@ -6,3 +6,4 @@ gem "json"              # TitleService
 gem "time-ago-in-words" # TitleService, LogService
 #gem "rmagick"           # TitleService
 gem "google-search"     # LuckyService
+gem "romegle"           # OmegleService
