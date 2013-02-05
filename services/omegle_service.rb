@@ -27,6 +27,7 @@
 require 'uri'
 require 'net/http'
 require 'json'
+require 'thread'
 
 # Class for handling connections with omegle.
 # This is a copy of ruby-omegle from github.  Thanks to the original author, 
@@ -34,14 +35,19 @@ require 'json'
 
 class Omegle
 
+  # Passed to omegle in every call
   STATIC_HEADERS = {"referer" => "http://omegle.com"}
 
+  # The ID of this session
   attr_accessor :id
 
   # Establish connection here to the omegle host
   # (ie. omegle.com or cardassia.omegle.com).
-  def initialize options = {}
-    @options = {:host => 'omegle.com'}.merge(options)
+  def initialize(options = {})
+    # mutex for multiple access to send/events
+    @mx = Mutex.new
+
+    integrate_configs(options)
 
     # FIFO for events
     @events = []
@@ -49,8 +55,8 @@ class Omegle
 
   # Static method that will handle connecting/disconnecting to
   # a person on omegle. Same options as constructor.
-  def self.start options = {}
-    s = Omegle.new options
+  def self.start(options = {})
+    s = Omegle.new(options)
     s.start
     yield s
     s.disconnect
@@ -58,20 +64,19 @@ class Omegle
 
   # Make a GET request to <omegle url>/start to get an id.
   def start(options = {})
-    opts = {:question => nil,
-            :topics => nil}.merge(options)
-    $log.debug("Starting Omegle session...")
-
-    if(opts[:question]) then
-      resp = req("start?rcs=1&firstevents=1&spid=&randid=#{get_randID}&cansavequestion=1&ask=#{URI::encode(opts[:question])}", :get)
+    integrate_configs(options)
+    
+    # Connect to start a session in one of three modes
+    if(@options[:question]) then
+      resp = req("start?rcs=1&firstevents=1&spid=&randid=#{get_randID}&cansavequestion=1&ask=#{URI::encode(@options[:question])}", :get)
+    elsif(@options[:answer]) then
+      resp = req("start?firstevents=1&wantsspy=1", :get)   #previously ended at 6
     else
       topicstring = ""
-      topicstring = "&topics=#{ URI::encode(opts[:topics].to_s) }" if opts[:topics].is_a?(Array)
+      topicstring = "&topics=#{ URI::encode(@options[:topics].to_s) }" if @options[:topics].is_a?(Array)
       resp = req("start?firstevents=1#{topicstring}", :get)   #previously ended at 6
     end
     
-    $log.debug ("Response: #{resp}")
-
     # Was the response JSON?
     if resp =~ /^"[\w]+:\w+"$/ then
       # not json, simply strip quotes
@@ -86,25 +91,19 @@ class Omegle
       # Add events if we requested it.
       add_events(resp["events"]) if resp["events"]
     end
-    
-
-    $log.debug("Started, id=#{@id}, urlenc = #{URI::encode(@id)}")
   end
 
   # POST to <omegle url>/events to get events from Stranger.
   def poll_events
-    $log.debug "POLLING EVENTS"
     ret = req('events', "id=#{@id}")
     parse_response(ret)
   end
 
   # Send a message to the Stranger with id = @id.
   def send(msg)
-    $log.debug("--> Sending to omegle: #{msg}")
     t = Time.now
     ret = req('send', "id=#{@id}&msg=#{URI::encode(msg)}")
     parse_response(ret)
-    $log.debug("--> Received: #{ret} after sending #{msg} (delay: #{Time.now - t}s).")
   end
 
   # Let them know you're typing.
@@ -116,13 +115,28 @@ class Omegle
   # Disconnect from Stranger
   def disconnect
     ret = req('disconnect', "id=#{@id}")
+    @id = nil if ret != nil
     parse_response(ret)
+  end
+
+  # Is this object in a session?
+  def connected?
+    @id != nil
+  end
+
+  # Is spy mode on?
+  def spy_mode?
+    @options[:question] != nil
+  end
+
+  # Does this session have any topics associated?
+  def topics
+    @options[:topics]
   end
 
   # Pass a code block to deal with each events as they come.
   def listen
     poll_events
-    $log.debug "Events on fifo: #{@events.length}"
     while (e = @events.pop) != nil
       yield e
       poll_events if @events.length == 0
@@ -130,6 +144,25 @@ class Omegle
   end
 
   private
+
+  # Merges configs with the 'global config'
+  # can only work when not connected
+  def integrate_configs(options = {})
+    @mx.synchronize{
+      raise "Cannot alter session settings whilse connected." if @id != nil
+      raise "Topics cannot be specified along with a question." if options[:question] and options[:topics]
+      raise "Topics cannot be specified along with answer mode" if options[:answer] and options[:topics]
+      raise "Answer mode cannot be enabled along with a question" if options[:answer] and options[:question]
+      @options = {:host => 'omegle.com',
+                  :question => nil,
+                  :topics => nil,
+                  :answer => false}.merge(options)
+    }
+  end
+
+
+  # Make a request to omegle.  synchronous.
+  # set args = :get to make a get request, else it's post.
   def req(path, args="")
     $log.debug("Omegle: Sending #{path}, args=#{args}")
 
@@ -147,15 +180,19 @@ class Omegle
     return nil
   end
 
+  # Add an event to the FIFO in-order
   def add_events(evts)
-    evts = [evts] if not evts.is_a? Array
+    @mx.synchronize{
+      evts = [evts] if not evts.is_a? Array
 
-    # add to front of array, pop off back
-    evts.each{|e|
-      @events = [e] + @events
+      # add to front of array, pop off back
+      evts.each{|e|
+        @events = [e] + @events
+      }
     }
   end
 
+  # Returns an 8-character random ID used when connecting
   def get_randID()
     # The JS in the omegle page says:
     #  if(!randID||8!==randID.length)
@@ -173,8 +210,10 @@ class Omegle
     return str;
   end
 
+  # Parse a JSON response from omegle,
+  # and add its events to the FIFO
   def parse_response(str)
-    return if(%w{win null}.include?(str.strip))
+    return if str == nil or (%w{win null}.include?(str.to_s.strip))
 
     # try to parse
     evts = JSON.parse(str)
@@ -184,8 +223,6 @@ class Omegle
 
     # add in order
     add_events(evts)
-  # rescue 
-    # json failure, silent.
   end
 
 end
@@ -207,16 +244,19 @@ class OmegleService < HookService
   
   # Print some help.
   def help
-    "Connects to omegle and summons a user, who talks through the bot.  Usage: '!omegle [topics]...' to summon, '!omegleAnon [topics]...' to summon without <nicks>, '!ask question' to enter spy mode."
+    "Connects to omegle and summons a user, who talks through the bot.  Usage: '!omegle [topics]...' to summon, '!ask question' for spy mode, '!askMe' to be asked a question, or !toggleNick to toggle sending nicks on/off"
   end
 
-  def summon_omegleite(bot, chan, use_nick=true, topics=[])
+  def summon_omegleite(bot, chan, topics=nil, answer_mode=false)
 
     # check we don't already have an instance running.
     if @channels.include?(chan)
-      bot.say("You cannot [currently] summon two omegle users in the same channel!")
+      bot.say("You cannot summon two omegle users to the same channel!")
       return
     end 
+
+    # make topics equal nil if it's an empty array
+    topics = nil if topics.is_a?(Array) and topics.length == 0
 
     # --- pullup
     # attempt to get an omegle connection
@@ -227,23 +267,18 @@ class OmegleService < HookService
       begin
 
       # set topics and start
-      if topics.length > 0
-        omegle.start(:topics => topics)
-      else
-        omegle.start()
-      end
+      omegle.start(:answer => answer_mode, :topics => topics)
+      # omegle.start(:topics => topics)
 
       # hook a normal conversation listener for a given channel only
       register_hook("omeg_send_#{chan}".to_sym, lambda{|raw| raw.channel == chan}, /channel/){
         begin
-          $log.debug "--> CHAN #{chan} #{nick} TO OMEG"
           omegle.typing
 
           # format message
           output = message
-          output = "<%s> %s" % [nick, message] if(use_nick)
+          output = "<%s> %s" % [nick, message] if(@config[:use_nick])
           omegle.send(output)
-          $log.debug "--> sent #{message}."
         rescue Exception => e
           $log.debug("Error in omeg_send_#{chan}: #{e}")
           $log.debug("#{e.backtrace.join("\n")}")
@@ -257,15 +292,17 @@ class OmegleService < HookService
       }
 
       # tell people we've connected
-      bot.say("Connected to Omegle #{(use_nick)? '(using <nick> template)' : ''}");
+      bot.say("Connected to Omegle #{(@config[:use_nick])? '(using <nick> template)' : ''}");
 
       # then sit in a loop and handle omegle stuff
       omegle.listen do |e|
         $log.debug "Omegle [chan=#{chan}] Encounetered omegle event: #{e}"
 
         case e[0]
+        when "question"
+          bot.say("Omegle asks: #{e[1]}")
         when "gotMessage"
-          bot.say("<omgl> #{e[1]}")
+          bot.say("<#{@config[:single_name]}> #{e[1]}")
         when "connected"
           bot.say("A stranger connected!")
         when "waiting"
@@ -306,10 +343,18 @@ class OmegleService < HookService
       return
     end 
 
+    # Pick names for p1 and p2, ensuring they are different
+    raise "Insufficient names in config file!" if @config[:spy_namelist].length < 2
+    names = {1 => @config[:spy_namelist][(rand * @config[:spy_namelist].length).to_i]}
+    names[2] = names[1]
+    until( names[2] != names[1] )
+      names[2] = @config[:spy_namelist][(rand * @config[:spy_namelist].length).to_i]
+    end
+
     
     # --- pullup
     # attempt to get an omegle connection
-    omegle = Omegle.new(:host => "front1.omegle.com")
+    omegle = Omegle.new
     @channels[chan] = omegle
     @connections[chan] = Thread.new(){
 
@@ -334,11 +379,11 @@ class OmegleService < HookService
 
         case e[0]
         when "spyMessage"
-          bot.say("<omeg #{e[1].split()[1]}> #{e[2]}")
+          bot.say("<o:#{names[e[1].split()[1].to_i]}> #{e[2]}")
         when "spyDisconnected"
-          bot.say("#{e[1]} disconnected.")
+          bot.say("#{names[e[1].split()[1].to_i]} disconnected.")
         when "connected"
-          bot.say("A conversation has started: '#{question}'")
+          bot.say("Enter Omeglites #{names.values.join(' and ')}...")
         when "waiting"
           bot.say("Waiting for people to connect.");
         end
@@ -358,14 +403,13 @@ class OmegleService < HookService
       bot.say("The Omegle session has ended.")
 
       rescue Exception => e
-        $log.debug("Error in thread: #{e}")
+        $log.debug("Omegle: Error in thread: #{e}")
         $log.debug("#{e.backtrace.join("\n")}")
       end 
 
     }.run
 
   end
-
 
   def disconnect(bot, chan)
     if not @channels[chan] then
@@ -377,24 +421,41 @@ class OmegleService < HookService
     @channels[chan].disconnect
   end
 
+  # toggle nick sending on/off
+  def toggle_nick(bot)
+    @config[:use_nick] = (not (@config[:use_nick] == true))
+    
+    if @config[:use_nick]
+      bot.say("Nicks will be sent with messages.")
+    else
+      bot.say("Nicks will not be sent (omegle users will just see anonymous text)")
+    end
+  end
+
   # Run through configs and hook them all.
   #
   # Hooks say things directly for speed, and do not return to this object.
   def hook_thyself
     me = self;
 
-
-    register_command(:omeg_connect_anon, /^[Oo]megleAnon$/, /channel/){|*topics|
-      me.summon_omegleite(bot, channel, false, topics)
+    # Toggle use of nick template
+    register_command(:omeg_toggle, /^[Tt]oggleNick$/, /channel/){
+      me.toggle_nick(bot)
     }
 
+    # Connect to a single stranger with <nickname> support
     register_command(:omeg_connect, /^[Oo]megle$/, /channel/){|*topics|
-      me.summon_omegleite(bot, channel, true, topics)
+      me.summon_omegleite(bot, channel, topics)
+    }
+    
+    # Connect to a single stranger with <nickname> support
+    register_command(:omeg_ask, /^[Aa]skMe$/, /channel/){
+      me.summon_omegleite(bot, channel, nil, true)
     }
 
-
+    # Spy mode, ask a question and watch two people debate.
     register_command(:omeg_spy, /^[Aa]sk$/, /channel/){|*question|
-      if question.length < 0
+      if(question.length < 0)
         bot.say("Please provide a question!")
       else
         me.spy_mode(bot, channel, question.join(" "))
@@ -404,6 +465,13 @@ class OmegleService < HookService
   end
 
 
+  # Close and clean up any open resources
+  def close
+    @channels.each{|omegle|
+      omegle.send("You have been connected to a message bridge, which is now shutting down.  Goodbye.")
+      omegle.disconnect
+    }
+  end
 
 end
 
