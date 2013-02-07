@@ -6,6 +6,7 @@ require 'json'
 require 'time'
 require 'time-ago-in-words'
 
+STATIC_HEADERS = {"referer" => "http://dailymail.co.uk"}
 
 
 # Looks up user comments from the daily mail, printing them to the channel
@@ -41,13 +42,15 @@ class DailyFail < HookService
         # {"id"=>25771666, "dateCreated"=>"2013-02-06T13:37:14Z", "message"=>"Front page news D.M.???", "assetId"=>2274352, "assetUrl"=>"/news/article-2274352/Tails-Sophie-Sarah-Besotted-couple-post-hilarious-picture-sheepdogs-online-day.html", "assetHeadline"=>"Tails of Sophie and Sarah: Besotted couple post hilarious picture of their sheepdogs online every day", "assetCommentCount"=>455, "userAlias"=>"kenlakey", "userLocation"=>"BISHOPS STORTFORD, United Kingdom", "userIdentifier"=>"4588499", "voteRating"=>-9, "voteCount"=>25}
 
         c = comments[(rand * comments.length).to_i]
-        bot.say("#{c['message']} --- #{c['userAlias']} in #{c['userLocation']} (#{Time.parse(c['dateCreated']).ago_in_words})")
+        bot.say("#{c['message']} --- #{c['userAlias']} in #{c['userLocation']} (#{Time.parse(c['dateCreated']).ago_in_words}) (#{c['voteRating']}/#{c['voteCount']})")
       else
         bot.say("No stories found had any comments!")
       end
     else
       bot.say("No articles found!")
     end
+  rescue Exception => e
+    bot.say("An error occurred on DM's end: #{e}")
   end
 
   def hook_thyself
@@ -64,19 +67,24 @@ class DailyFail < HookService
 
 
   def search_dm(str = "immigrants")
-    uri = URI("http://www.dailymail.co.uk/home/search.html?sel=site&search=Phrase=#{URI.encode(str)}")
+    uri = URI("http://www.dailymail.co.uk/home/search.html?sel=site&searchPhrase=#{URI.encode(str)}")
     body = ""
     Net::HTTP.start(uri.host, uri.port) do |http|
-      req = Net::HTTP::Get.new(uri.request_uri)
+      req = Net::HTTP::Get.new(uri.request_uri, STATIC_HEADERS)
       res = http.request(req)
       
       raise "Response code: #{res.code}" if res.code != "200"
       body = res.body
     end
 
+    File.open("test.html", 'w'){|f|
+      f.write(body)
+    }
+
     ids = Set.new
     body.scan(/\/news\/article-(?<id>[0-9]+)\//).each{|m|
       ids << m[0].to_i
+      # puts "IDs: #{ids.inspect}"
     }
 
     return ids.to_a
@@ -96,7 +104,7 @@ class DailyFail < HookService
     uri = URI("http://www.dailymail.co.uk/reader-comments/p/asset/readcomments/#{id}?offset=#{offset}&max=#{max}#{policy == :voteRating ? '&sort=voteRating' : ''}&order=#{order.to_s}")
     body = ""
     Net::HTTP.start(uri.host, uri.port) do |http|
-      req = Net::HTTP::Get.new(uri.request_uri)
+      req = Net::HTTP::Get.new(uri.request_uri, STATIC_HEADERS)
       res = http.request(req)
       
       raise "Response code: #{res.code}" if res.code != "200"
@@ -104,6 +112,7 @@ class DailyFail < HookService
     end
 
     data = JSON.parse(body)
+    # $log.debug("#{data}")
     raise "Error reported by DM service." if data['status'] != "success" or data['code'] != "200"
     return data['payload']
 
@@ -112,7 +121,6 @@ class DailyFail < HookService
       return nil
 
   end
-
 
 
 end
