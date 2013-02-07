@@ -31,7 +31,11 @@ class DailyFail < HookService
       comments = []
       while(ids.length > 0 and comments.length == 0)
         id = ids[(rand * ids.length).to_i]
-        raw = get_comments(id, :voteRating, :asc, 0, 10)
+        raw = nil
+        begin
+          raw = get_comments(id, :voteRating, :asc, 0, 10)
+        rescue Exception => e # if it fails just count it as no comments
+        end
         comments += raw['page'] if raw.is_a?(Hash)
         ids.delete(id)
       end
@@ -113,7 +117,6 @@ class DailyFail < HookService
 
     data = JSON.parse(body)
     # $log.debug("#{data}")
-    raise "Error reported by DM service." if data['status'] != "success" or data['code'] != "200"
     return data['payload']
 
     rescue EOFError
