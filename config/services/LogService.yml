@@ -1,4 +1,7 @@
 --- 
+:gems:
+  - time-ago-in-words
+  - sqlite3
 # Storage config
 :database_path:  "data/logs.db"
 :auto_wildcard: true            # If set to true, will automatically wrap *expressions*

@@ -127,11 +127,37 @@ def camel_to_underscore(str)
 end
 
 # Ensure our namespace covers the hooks dir
+# config[:hooks][:objs].each{|h|
+# }
+
+
+# -----------------------------------------------------------------------------------
+# Instantiate the bot
+hook_manager  = HookBot::HookManager.new
+bot           = HookBot::Bot.new(config[:irc], hook_manager)
+services      = []
 config[:hooks][:objs].each{|h|
   # Construct path from class name
   file = camel_to_underscore(h) + ".rb"
   path = File.join(config[:hooks][:dir], file)
   $log.info "Loading service #{h} from #{file}..."
+
+
+  # Create the hook object with a reference to the bot
+  $log.info "Parsing config for #{h}..."
+  hook_config   = PersistentHash.new( File.join(config[:hooks][:config_dir], "#{h}.yml"), true ) 
+   
+  # Load required gems
+  if(hook_config[:gems].is_a? Array) then
+    $log.info "Loading gems for #{h}..."
+    hook_config[:gems].each{|g|
+      $log.debug "Gem: #{g}..."
+      gem g
+    }
+  end
+
+  # Load file
+  $log.info "Loading file for #{h}..."
 
   # Check the file exists for the user
   if not File.exist?(path) then
@@ -142,27 +168,9 @@ config[:hooks][:objs].each{|h|
 
   # Load file
   load path
-}
 
-
-# -----------------------------------------------------------------------------------
-# Instantiate the bot
-hook_manager  = HookBot::HookManager.new
-bot           = HookBot::Bot.new(config[:irc], hook_manager)
-services      = []
-config[:hooks][:objs].each{|h|
-  
-  # Create the hook object with a reference to the bot
-  $log.info "Registering hooks for #{h}..."
-  hook_config   = PersistentHash.new( File.join(config[:hooks][:config_dir], "#{h}.yml"), true ) 
-   
-  # Load required gems
-  if(hook_config[:gems].is_a? Array) then
-    hook_config[:gems].each{|gem|
-      require gem
-    }
-  end
-
+  # Then instantiate
+  $log.debug "Instantiating #{h}..."
   hook = eval("#{h}.new(hook_manager, hook_config)")
   hook.hook_thyself
   services << hook

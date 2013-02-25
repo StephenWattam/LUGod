@@ -1,4 +1,6 @@
 ---
+:gems:
+  - romegle
 :use_nick: false        # Should all messages be sent with a nick (<nick> msg)
 :single_name: omegle    # name used when one person is talking
 :spy_namelist:          # names randomly assigned in spy mode

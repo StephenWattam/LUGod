@@ -1,4 +1,8 @@
 ---
+:gems:
+  - htmlentities
+  - json
+  - time-ago-in-words
 :max_urls_per_msg: 5                          # Do not output if more than this number of URLs per message is seen
 :max_info_length: 200                         # Max length for any requester's output
 :min_info_length: 5                           # Minimum length for any requester's output

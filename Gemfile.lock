@@ -1,23 +1,14 @@
 GEM
   remote: http://rubygems.org/
   specs:
-    google-search (1.0.3)
-      json
     htmlentities (4.3.1)
     json (1.7.4)
-    raspell (1.3)
-    romegle (0.1.1)
-    sqlite3 (1.3.6)
     time-ago-in-words (0.1.2)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  google-search
   htmlentities
   json
-  raspell
-  romegle
-  sqlite3
   time-ago-in-words
