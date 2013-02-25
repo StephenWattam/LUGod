@@ -146,16 +146,7 @@ config[:hooks][:objs].each{|h|
   # Create the hook object with a reference to the bot
   $log.info "Parsing config for #{h}..."
   hook_config   = PersistentHash.new( File.join(config[:hooks][:config_dir], "#{h}.yml"), true ) 
-   
-  # Load required gems
-  if(hook_config[:gems].is_a? Array) then
-    $log.info "Loading gems for #{h}..."
-    hook_config[:gems].each{|g|
-      $log.debug "Gem: #{g}..."
-      gem g
-    }
-  end
-
+  
   # Load file
   $log.info "Loading file for #{h}..."
 

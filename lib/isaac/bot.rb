@@ -4,6 +4,11 @@ require 'thread'
 
 module Isaac
   
+  # Message splitting options
+  MAX_MESSAGE_SIZE    = 450  # max number of chars per message
+  ELLIPSIS            = "\u2026"   # ellipsis message, by default unicode ellipsis
+  MAX_MESSAGE_CHUNKS  = 5 # anti-spam.  Do not span over this many messages
+
   Config = Struct.new(:server, :port, :ssl, :password, :nick, :realname, :version, :environment, :verbose, :log)
 
   class Bot
@@ -238,8 +243,45 @@ module Isaac
       (("001".."004").to_a - @registration).empty?
     end
 
+    # Send a message.
+    # will span anything that ends up over MAX_MESSAGE_SIZE chars
     def message(msg)
-      @queue << msg
+      # puts "SENDING MESSAGE: #{msg} #{msg.to_s.length}"
+      # raise "Message over 512 characters" if msg.to_s.length MAX_MESSAGE_SIZE 
+      
+      # Splits the message, presuming that the final parameter is going to be
+      # the longest one (in the case of most messages, this is true)
+      if msg.to_s.length > MAX_MESSAGE_SIZE 
+        log.debug "Message is too long"
+        m = Message.new(msg)
+        prefix_length = m.to_s.length - m.params[-1].to_s.length
+        
+        raise "Message prefix too long" if prefix_length > (MAX_MESSAGE_SIZE - 10) # max irc message length, with a bit of space for actual content
+       
+        log.debug "Splitting message..."
+        payload = m.params[-1]
+        count = 0
+        while(payload.to_s.length > 0 and count < MAX_MESSAGE_CHUNKS)
+          # take a copy of the message
+          new_msg = m.dup
+          cutoff = MAX_MESSAGE_SIZE - prefix_length - ELLIPSIS.length
+
+          # change its payload
+          new_msg.params[-1] = payload[0.. (cutoff) ] + "#{(payload.length > cutoff) ? ELLIPSIS : ''}"
+
+          # remove the first n chars from the payload
+          payload = payload[(cutoff + 1)..-1]
+
+          # add to the list
+          @queue << new_msg.to_s
+
+          log.debug "---> '#{payload}' remaining"
+        end
+
+        # puts "--> #{m}, #{m.to_s.length}"
+      else
+        @queue << msg
+      end
     end
   end
 
@@ -275,14 +317,28 @@ module Isaac
       else
         @params = raw_params.split(" ")
       end
+  
+  
+#       puts "MESSAGE: #{self} //      #{@raw}"
+#       puts " command: #{@command}"
+#       puts "  params: #{@params.join(", ")}"
+#       puts " channel: #{channel}"
+#       puts " recipient: #{recipient}"
+#       puts " reply_to: #{reply_to}"
+#       puts "    nick: #{nick}"
+    end
 
-      # puts "MESSAGE: #{self}"
-      # puts " command: #{@command}"
-      # puts "  params: #{@params.join(", ")}"
-      # puts " channel: #{channel}"
-      # puts " recipient: #{recipient}"
-      # puts " reply_to: #{reply_to}"
-      # puts "    nick: #{nick}"
+    # Unparse
+    # FIXME: this may not be perfect.
+    # based on http://www.networksorcery.com/enp/protocol/irc.htm
+    def to_s
+      str = ""
+
+      str += ":#{@prefix} " if @prefix
+      str += "#{@command} " if @command
+      str += "#{@params[0..-2].join(' ')} #{(@params.length > 1)? ':' : ''}#{@params[-1]}"
+
+      return str
     end
 
     # The nick responsible for the message
@@ -417,7 +473,6 @@ module Isaac
         else
           @transfered = transfered_after_next_send
           @socket.print next_message
-          #puts ">> #{msg}" if @bot.config.verbose
         end
       end
     end
