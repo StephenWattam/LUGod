@@ -1,0 +1,5 @@
+---
+:gems:
+  - nokogiri
+:prompt: "Search amazon.co.uk!"
+:min_length: 5
