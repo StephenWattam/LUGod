@@ -1,7 +1,7 @@
 
 require 'sqlite3'
 require 'time'
-require 'time-ago-in-words'
+require 'time_ago_in_words'
 
 # Manages a SQLite log, and provides basic reporting functionality
 class LogService < HookService
