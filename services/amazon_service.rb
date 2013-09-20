@@ -22,7 +22,7 @@ class AmazonService < HookService
     search_uri = "http://www.amazon.co.uk/s/ref=nb_sb_noss?url=search-alias%3Daps&field-keywords=#{search_term}"
 
     search_result = "No results!"
-    search_link = "[ No link ]"
+    search_link = "No link"
 
     # It's parsin' time!
     doc = Nokogiri::HTML( open(search_uri) )
