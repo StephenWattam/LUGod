@@ -3,7 +3,7 @@ require 'uri'
 require 'htmlentities'
 require 'json'
 require 'time'
-require 'time-ago-in-words'
+require 'time_ago_in_words'
 require 'timeout'
 
 

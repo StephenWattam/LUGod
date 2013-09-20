@@ -1,6 +1,6 @@
 --- 
 :gems:
-  - time-ago-in-words
+  - time_ago_in_words
   - sqlite3
 # Storage config
 :database_path:  "data/logs.db"

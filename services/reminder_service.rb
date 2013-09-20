@@ -1,6 +1,6 @@
 require 'rubygems'
 require 'raspell'
-require 'time-ago-in-words'
+require 'time_ago_in_words'
 
 # Allows people to set reminders for one another.
 # Matches regex on nicks, to set reminds for anyone (or variant nicks like away flags)!
