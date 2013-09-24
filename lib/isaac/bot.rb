@@ -164,7 +164,6 @@ module Isaac
     
     # Is this still connected?
     def connected?
-      # TODO: make this a bit more accurate
       !@socket.nil? 
     end
 
@@ -205,6 +204,11 @@ module Isaac
       while line = @socket.gets
         parse line
       end
+
+      # Then close socket if not already closed
+      # TODO: gracefully d/c from server if not already done
+      @socket.close
+      @socket = nil
     end
 
     # Handle all comms from the server

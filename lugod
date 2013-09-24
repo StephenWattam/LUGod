@@ -163,7 +163,6 @@ config[:hooks][:objs].each{|h|
   # Then instantiate
   $log.debug "Instantiating #{h}..."
   hook = eval("#{h}.new(hook_manager, hook_config)")
-  hook.hook_thyself
   services << hook
 
   # Check it makes sense to use callbacks on it
@@ -172,11 +171,6 @@ config[:hooks][:objs].each{|h|
 
 
 # -----------------------------------------------------------------------------------
-# Daemonize if we want to
-if config[:daemonise] then
-  $log.info "Forking to background..."
-  Process.daemon(true)
-end
 
 #
 # Start execution proper
@@ -199,15 +193,47 @@ end
 begin
 
   # Continually connect and run
+  first_loop = true
   loop{
+  
+    # Hook all of the services
+    $log.info "Hooking #{services.length} services..."
+    services.each { |s| s.hook_thyself }
+
+    # Connect the bot to the IRC server
     $log.info "Connecting bot..."
     bot.run(true, true)
     $log.info "Bot connected --- dropping back to check connection"
 
+    # IF this is the first time through, and if the user wants, drop to the background
+    # here.
+    #
+    # Daemonize if we want to
+    if first_loop && config[:daemonise] then
+      $log.info "Forking to background..."
+      Process.daemon(true)
+    end
+    first_loop = false
+
+    # Monitor the bot's connection and reconnect if dropped
     while(bot.connected?)
+      $log.debug "Testing bot connection: #{bot.connected?}"
       sleep([config[:bot_connection_poll_rate], MIN_RECONNECT_RATE].max)
     end
     $log.error "Disconnected!"
+
+
+    # Close all services once and for all.
+    $log.fatal "Closing #{services} services for reconnect..."
+    services.each{|s|
+      $log.debug "Closing Service #{s.class}..."
+      s.close
+    }
+    
+    # Unhook any that didn't unhook themself
+    $log.fatal "Unhooking remaining services... (Will wait #{config[:module_thread_timeout]}s)"
+    hook_manager.unregister_all(config[:module_thread_timeout])
+
   }
 
 # Handle signals nicely.
@@ -231,12 +257,13 @@ rescue SignalException => Se
     $log.fatal "Unhooking remaining services... (Will wait #{config[:module_thread_timeout]}s)"
     hook_manager.unregister_all(config[:module_thread_timeout])
   end
-end
 
-# Delete PID File
-if config[:pidfile] then
-  $log.info "Removing PID file (#{config[:pidfile]})..."
-  File.delete(config[:pidfile])
+ensure
+  # Delete PID File
+  if config[:pidfile] then
+    $log.info "Removing PID file (#{config[:pidfile]})..."
+    File.delete(config[:pidfile])
+  end
 end
 
 $log.info "Goodbye!"
