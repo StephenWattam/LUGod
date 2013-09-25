@@ -118,6 +118,16 @@ $log.debug "Installing signal handlers."
 }
 
 
+# -----------------------------------------------------------------------------------
+# Check PID file
+if config[:pidfile] && File.exist?(config[:pidfile]) then
+    $log.fatal "PID file already exists at #{config[:pidfile]}!"
+    $log.fatal "Please stop the other instance before starting again."
+    $log.fatal "To disable this check, set pidfile to nil in the config file."
+    exit(1);
+end
+
+
 
 # -----------------------------------------------------------------------------------
 # Constuct hooks
@@ -171,25 +181,12 @@ config[:hooks][:objs].each{|h|
 
 
 # -----------------------------------------------------------------------------------
-
-#
 # Start execution proper
 #
-# Write PID file
-if config[:pidfile] then
-  if File.exist?(config[:pidfile]) then
-    $log.fatal "PID file already exists at #{config[:pidfile]}!"
-    $log.fatal "Please stop the other instance before starting again."
-    $log.fatal "To disable this check, set pidfile to nil in the config file."
-    exit(1);
-  end
-  $log.info "Writing PID file to #{config[:pidfile]}..."
-  File.open(config[:pidfile], 'w'){|fo| fo.write($$) }
-end
 
 
 # -----------------------------------------------------------------------------------
-# Then connect
+# connect
 begin
 
   # Continually connect and run
@@ -200,11 +197,6 @@ begin
     $log.info "Hooking #{services.length} services..."
     services.each { |s| s.hook_thyself }
 
-    # Connect the bot to the IRC server
-    $log.info "Connecting bot..."
-    bot.run(true, true)
-    $log.info "Bot connected --- dropping back to check connection"
-
     # IF this is the first time through, and if the user wants, drop to the background
     # here.
     #
@@ -212,8 +204,20 @@ begin
     if first_loop && config[:daemonise] then
       $log.info "Forking to background..."
       Process.daemon(true)
+
+      if config[:pidfile]
+        $log.info "Writing PID file to #{config[:pidfile]}..."
+        File.open(config[:pidfile], 'w'){|fo| fo.write($$) }
+      end
+
     end
     first_loop = false
+
+    # Connect the bot to the IRC server
+    $log.info "Connecting bot..."
+    bot.run(true, true)
+    $log.info "Bot connected --- dropping back to check connection"
+
 
     # Monitor the bot's connection and reconnect if dropped
     while(bot.connected?)
