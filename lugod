@@ -243,12 +243,22 @@ begin
 # Handle signals nicely.
 rescue SignalException => Se
   $log.fatal "Caught signal!"
-  if defined? bot and bot.connected? then
 
-    # Then d/c bot
-    $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s before killing services)"
-    bot.disconnect("Caught signal.", BOT_DC_TIMEOUT)
-    $log.fatal "Done."
+rescue StandardError => e
+  $log.fatal "Exception : #{e}"
+  $log.debug e.backtrace.join("\n")
+ensure
+
+  # If a bot exists, close it neatly.
+  if defined? bot 
+
+    # Disconnect if connected
+    if bot.connected? then
+      # Then d/c bot
+      $log.fatal "Disconnecting bot... (Will wait #{BOT_DC_TIMEOUT}s before killing services)"
+      bot.disconnect("Caught signal.", BOT_DC_TIMEOUT)
+      $log.fatal "Done."
+    end
 
 
     # Close all services once and for all.
@@ -262,7 +272,7 @@ rescue SignalException => Se
     hook_manager.unregister_all(config[:module_thread_timeout])
   end
 
-ensure
+
   # Delete PID File
   if config[:pidfile] then
     $log.info "Removing PID file (#{config[:pidfile]})..."
