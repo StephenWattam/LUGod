@@ -266,7 +266,7 @@ ensure
   # Delete PID File
   if config[:pidfile] then
     $log.info "Removing PID file (#{config[:pidfile]})..."
-    File.delete(config[:pidfile])
+    File.delete(config[:pidfile]) if File.exist?(config[:pidfile])
   end
 end
 
