@@ -1,0 +1,14 @@
+---
+:gems:
+  - twitter
+:auth:
+  :consumer_key: 
+  :consumer_secret: 
+  :access_token: 
+  :access_token_secret: 
+:poll_rate: 180 
+:max_tweets_per_poll: 2 # Never output more than this many tweets per polling period
+:say_own_tweets: false
+:twitter_account_username: LUCSGod
+:channels:
+  - ! "#lucs"
