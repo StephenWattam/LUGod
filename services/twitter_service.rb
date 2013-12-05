@@ -2,7 +2,7 @@
 require 'twitter'
 
 # Manages channel membership for the bot in a stateless manner
-class TwitterNews < HookService
+class TwitterService < HookService
 
   # Constructor
   def initialize(hook_manager, config, threaded = false)
