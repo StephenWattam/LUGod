@@ -144,11 +144,16 @@ private
 
       # Read new tweets
       new_tweets = []
-      if most_recent_tweet
-        # TODO: handle backoff a la twitter API
-        new_tweets = @client.home_timeline(:since_id => most_recent_tweet.id)
-      else
-        new_tweets = @client.home_timeline()
+      begin
+        if most_recent_tweet
+          # TODO: handle backoff a la twitter API
+          new_tweets = @client.home_timeline(:since_id => most_recent_tweet.id)
+        else
+          new_tweets = @client.home_timeline()
+        end
+      rescue Twitter::Error => te
+        $log.error "Twitter error: #{te}"
+        $log.debug te.backtrace.join("\n")
       end
 
       $log.debug "[twitter] Got #{new_tweets.length} new tweets."
