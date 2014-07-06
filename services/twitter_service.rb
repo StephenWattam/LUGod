@@ -163,7 +163,7 @@ private
 
       # Delete tweets from ourself.
       unless @config[:say_own_tweets]
-        new_tweets.delete_if{|t| t.user? && t.user.username == @config[:twitter_account_username] }
+        new_tweets.delete_if{|t| t.user? && t.user.screen_name == @config[:twitter_account_username] }
       end
 
       # Output to bots
