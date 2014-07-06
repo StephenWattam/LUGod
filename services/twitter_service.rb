@@ -185,7 +185,7 @@ private
   # Turn a tweet into a string
   def compose_message(tweet)
     str = []
-    str << "[@#{tweet.user.username}] " if tweet.user?
+    str << "[@#{tweet.user.screen_name}] " if tweet.user?
     str << tweet.text
 
     return str.join
