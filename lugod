@@ -221,11 +221,10 @@ begin
 
     # Monitor the bot's connection and reconnect if dropped
     while(bot.connected?)
-      $log.debug "Testing bot connection: #{bot.connected?}"
+      $log.info "Testing bot connection: #{bot.connected?}"
       sleep([config[:bot_connection_poll_rate], MIN_RECONNECT_RATE].max)
     end
     $log.error "Disconnected!"
-
 
     # Close all services once and for all.
     $log.fatal "Closing #{services} services for reconnect..."
