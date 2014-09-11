@@ -107,7 +107,7 @@ module LinkInfoLookup
         title.gsub!("\n\r", "")
         title.gsub!(/\s+/, " ")
         title.strip!
-        title = HTMLEntities.new.decode(title)
+        title = HTMLEntities.new.decode(title.force_encoding('utf-8'))
       }
 
       # Store and say we succeeded
