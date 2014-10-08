@@ -8,9 +8,8 @@ module Isaac
   MAX_MESSAGE_SIZE    = 450       # max number of chars per message
   ELLIPSIS            = "\u2026"  # ellipsis message, by default unicode ellipsis
   MAX_MESSAGE_CHUNKS  = 5         # anti-spam.  Do not span over this many messages
-  MESSAGE_TIMEOUT     = 60 * 5    # Will register as disconnected if no messages (including pings) in this time
 
-  Config = Struct.new(:server, :port, :ssl, :password, :nick, :realname, :version, :environment, :verbose, :log, :timeout)
+  Config = Struct.new(:server, :port, :ssl, :password, :nick, :realname, :version, :environment, :verbose, :log) 
 
   class Bot
     # Access config properties
@@ -19,7 +18,7 @@ module Isaac
     # Initialise with a block for caling :on, etc
     def initialize(&b)
       @config       = Config.new("localhost", 6667, false, nil, "lugod", "LUGod", 'lugod', 
-                                 :production, false, Logger.new(nil), MESSAGE_TIMEOUT)
+                                 :production, false, Logger.new(nil))
       @action_mutex = Mutex.new
       instance_eval(&b) if block_given?
     end
@@ -63,7 +62,6 @@ module Isaac
     # Connect and start doing stuff.
     def start
       log.info "Connecting to #{@config.server}:#{@config.port}" unless @config.environment == :test
-      @last_message_time = Time.now
       @irc = IRC.new(self, @config)
       @irc.connect
     end
@@ -86,6 +84,9 @@ module Isaac
     
     # Send raw info to IRC
     def raw(command)
+
+      command.gsub!(/(\r\n?)+/, "\u21A9")
+
       @action_mutex.synchronize{
         log.debug "Sending #{command}"
         @irc.message(command)
@@ -145,7 +146,6 @@ module Isaac
     # Is the bot currently connected?
     def connected?
       socket_connected = (@irc) ? @irc.connected? : false
-      socket_connected && ((Time.now - @last_message_time) < @config.timeout)
     end
   end
 
@@ -196,6 +196,7 @@ module Isaac
       else
         @socket = tcp_socket
       end
+      @socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_KEEPALIVE, true)
 
       # Set configs up on first connect
       @queue = Queue.new(@socket, @bot.config.server)
@@ -220,8 +221,6 @@ module Isaac
       log.debug "[isaac] Received #{input.chomp}" if @bot.config.verbose
       puts "<< #{input.unpack('A' * input.length).join(",")}" if @bot.config.verbose
       msg = Message.new(input)
-
-      @last_message_time = Time.now
 
       if ("001".."004").include? msg.command
         @registration << msg.command
