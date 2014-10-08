@@ -85,7 +85,7 @@ module Isaac
     # Send raw info to IRC
     def raw(command)
 
-      command.gsub!(/(\r\n?)+/, "\u21A9")
+      command.gsub!(/[\r\n]+/, "\u21A9")
 
       @action_mutex.synchronize{
         log.debug "Sending #{command}"
