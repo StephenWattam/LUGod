@@ -19,7 +19,7 @@ CONFIG_FILE = "./config/config.yml"
 # -----------------------------------------------------------------------------------
 # Load config
 #
-environment   = ARGV[0] 
+environment   = nil #ARGV[0] 
 config        = PersistentHash.new(CONFIG_FILE, true)
 $log          = MultiOutputLogger.new({:level => :info}, "Bundler")
 $log.info "Bundler loading gems from config #{CONFIG_FILE}..."

@@ -1,7 +1,6 @@
 require 'net/http'
 require 'uri'
 require 'htmlentities'
-require 'json'
 require 'time'
 require 'time_ago_in_words'
 require 'timeout'
@@ -63,6 +62,18 @@ module LinkInfoLookup
     # Used to match the content of the title element.
     TITLE_RX = /<\s*title\s*>(.*?)<\s*\/\s*title\s*>/mi
 
+
+    def initialize(config, uri)
+      super(config, uri)
+
+      # Set headers
+      @headers = {
+        'Accept'  => 'text/*;q=0.3, text/html;q=0.7',
+        'Referer' => @uri.to_s
+      }
+      @headers['User-Agent'] = @config[:user_agent] if @config[:user_agent]
+    end
+
     # Looks up the title from a page
     def request
       $log.debug "Looking up URI: #{@uri}"
@@ -73,6 +84,7 @@ module LinkInfoLookup
       # Check content-type using a head request
       client = Net::HTTP.new(@uri.host, @uri.port)
       client.use_ssl = true if @uri.scheme.downcase == "https"
+
       client.start{|http|
         # normalise path
         # clone and delete host info, then recombobulate
@@ -81,7 +93,7 @@ module LinkInfoLookup
         path = path.to_s
 
         # Make head request
-        head        = http.head(path)
+        head        = http.head(path, @headers)
         redirects   = @config[:max_redirects]
         while head.kind_of?(Net::HTTPRedirection) do
           path        = head['location']
@@ -95,7 +107,7 @@ module LinkInfoLookup
 
         # Make proper request
         $log.debug 'Correct content type!'
-        res   = http.get(path)
+        res   = http.get(path, @headers)
         body  = res.body
 
         # found title?
@@ -112,62 +124,6 @@ module LinkInfoLookup
 
       # Store and say we succeeded
       @result = title
-      return true
-    rescue Exception => e
-      $log.error "Exception looking up title: #{e}"
-      $log.debug e.backtrace.join("\n")
-      return false 
-    end
-  end
-
-
-  # Requests information about Imgur images when passed
-  # a link including an imgur 5-character alphanumeric hash
-  #
-  # This uses the imgur API, and so can return richer data
-  # than a generic lookup, but can be slower for it.
-  class ImgurRequester < TitleRequester 
-
-    # Looks up imgur info
-    def request
-
-      # Find the imgur image hash from the URI given in the constructor
-      image_hash = nil
-      if @uri.path =~ /(\/gallery)?\/([a-zA-Z0-9]{5})(\.[a-zA-Z]{1,7})?$/ then
-        image_hash = $2
-      else
-        # none found, not an imgur URI so return blank
-        return nil
-      end
-
-      # Get the JSON info from the api
-      $log.debug "Looking up imgur image: #{image_hash}"
-      info = JSON.parse( Net::HTTP.get(URI.parse("http://api.imgur.com/2/image/%s.json" % [image_hash])) )
-      
-      # Now sift through and put some useful info in the response
-      return if not info["image"]
-
-      # Collate info
-      info = info["image"]["image"] # Not interested in the various links.
-
-      # I am suspicious these are always nil.
-      title       = info["title"]
-      # caption     = info["caption"]
-      time        = Time.parse(info["datetime"])
-      views       = info["views"]
-      # bandwidth   = info["bandwidth"]
-      animated    = info["animated"] == "true"
-      dimensions  = "#{info["width"]}x#{info["height"]}"
-
-      # If the title didn't come from the API, make a request for it.
-      # This will fail if the link is direct, but fret not.
-      if not title and @config[:lookup_titles] then
-        rq = TitleRequester.new({:template => "%s", :max_redirects => @config[:max_redirects]}, @uri)
-        title = rq.format_output.to_s.gsub(/- Imgur$/, '').strip if rq.request
-      end
-
-      # Return a nicely formatted string with the info in it
-      @result     = "#{(title.to_s.length > @config[:min_title_length]) ? title : ''}: posted #{time.ago_in_words}, #{dimensions}#{animated ? ', animated' : ''}, #{views} views."
       return true
     rescue Exception => e
       $log.error "Exception looking up title: #{e}"

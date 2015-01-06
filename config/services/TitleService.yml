@@ -1,8 +1,8 @@
 ---
 :gems:
   - htmlentities
-  - json
   - time_ago_in_words
+  - rmagick
 :max_urls_per_msg: 5                          # Do not output if more than this number of URLs per message is seen
 :max_info_length: 200                         # Max length for any requester's output
 :min_info_length: 5                           # Minimum length for any requester's output
@@ -16,8 +16,7 @@
 # This is done on a first match policy.  Put highest specificity first.
 :requesters:                                                  
   '^https?://en.wikipedia.org/wiki/.*': BlacklistRequester  # Don't find titles for obvious links
-  '^https?://([a-z]+\.)?imgur.com/.+': ImgurRequester
-# '^https?://.+\.(jpg|png|gif|jpeg|tiff|bmp)$': ImageRequester
+  '^https?://.+\.(jpg|png|gif|jpeg|tiff|bmp)$': ImageRequester
   '^https?://.*': TitleRequester
 
 # Configuration for each requester type
@@ -26,11 +25,7 @@
 :TitleRequester:
   :max_redirects: 5         # Follow 5 redirects
   :template: "Title: %s"    # The prefix used when outputting.
+  :user_agent: "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
 :ImageRequester:
   :max_redirects: 5         # Follow 5 redirects
   :template: "Image: %s"    # The prefix used when outputting.
-:ImgurRequester:
-  :min_title_length: 5      # Check the title is over n chars
-  :lookup_titles: true      # Should we fall back to using TitleRequester to look up the title?
-  :max_redirects: 5         # Used when looking up the title of images conventionally, rather than via the api
-  :template: "Imgur: %s"    # The way to tell people the service was used
