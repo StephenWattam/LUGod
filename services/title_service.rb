@@ -89,13 +89,19 @@ module LinkInfoLookup
         # normalise path
         # clone and delete host info, then recombobulate
         path = @uri.clone
-        %w{scheme userinfo host port registry}.each{|x| eval("path.#{x} = nil") }
+        %w{scheme userinfo host port}.each{|x| eval("path.#{x} = nil") }
         path = path.to_s
 
+        $log.debug "Retrieving #{path} (HEAD)"
+        
         # Make head request
-        head        = http.head(path, @headers)
+        #
+        # XXX: converted to get request since, as of 04-03-15,
+        # ruby's Net::HTTP is not returning HEAD requests properly.
+        head        = http.get(path, @headers)
         redirects   = @config[:max_redirects]
         while head.kind_of?(Net::HTTPRedirection) do
+          $log.debug "REDIRECTING..."
           path        = head['location']
           head        = http.head(head['location'])
           redirects  -= 1
