@@ -113,7 +113,7 @@ $log.summarise_logging
 # -----------------------------------------------------------------------------------
 # Handle signals nicely.
 $log.debug "Installing signal handlers."
-%w{INT HUP KILL ABRT}.each{|s|
+%w{INT HUP ABRT}.each{|s|
   trap(s) { raise SignalException.new(s) }
 }
 
@@ -224,14 +224,15 @@ begin
       $log.info "Testing bot connection: #{bot.connected?}"
       sleep([config[:bot_connection_poll_rate], MIN_RECONNECT_RATE].max)
     end
+    $log.info "Bot connection: #{bot.connected?}"
     $log.error "Disconnected!"
 
     # Close all services once and for all.
-    $log.fatal "Closing #{services} services for reconnect..."
-    services.each{|s|
-      $log.debug "Closing Service #{s.class}..."
-      s.close
-    }
+    #$log.fatal "Closing #{services} services for reconnect..."
+    #services.each{|s|
+    #  $log.debug "Closing Service #{s.class}..."
+    #  s.close
+    #}
     
     # Unhook any that didn't unhook themself
     $log.fatal "Unhooking remaining services... (Will wait #{config[:module_thread_timeout]}s)"
